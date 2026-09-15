@@ -5,7 +5,6 @@ import { useEmergency } from '../context/EmergencyContext';
 import { useMedicalData } from '../context/MedicalDataContext';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { Modal } from '../components/common/Modal';
-import { IntegrationsHub } from '../components/common/IntegrationsHub';
 import {
   Hospital,
   ShieldCheck,
@@ -207,15 +206,6 @@ export const AdminDashboard = () => {
           <AlertTriangle size={16} />
           {lang === 'hi' ? 'आपातकालीन लॉग सूची' : 'Emergency Incident Logs'}
         </button>
-
-        <button
-          onClick={() => setActiveTab('integrations')}
-          className={`btn btn-sm ${activeTab === 'integrations' ? 'btn-primary' : 'btn-ghost'}`}
-          style={{ borderRadius: 'var(--radius-full)' }}
-        >
-          <Cpu size={16} />
-          {lang === 'hi' ? '🔌 थर्ड-पार्टी इंटीग्रेशन हब' : '🔌 3rd-Party Integrations Hub'}
-        </button>
       </div>
 
       {/* 4. Tab Contents */}
@@ -330,10 +320,6 @@ export const AdminDashboard = () => {
             </table>
           </div>
         </div>
-      )}
-
-      {activeTab === 'integrations' && (
-        <IntegrationsHub />
       )}
 
       {/* Add Provider Modal */}

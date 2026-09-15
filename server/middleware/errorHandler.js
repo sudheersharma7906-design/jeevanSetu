@@ -1,7 +1,9 @@
 // server/middleware/errorHandler.js
 
-export function errorHandler(err, req, res, next) {
-  console.error('[Error caught by global handler]:', err);
+export function errorHandler(err, req, res, _next) {
+  if (process.env.NODE_ENV !== 'test') {
+    console.error('[Error caught by global handler]:', err);
+  }
 
   const statusCode = err.statusCode || (res.statusCode !== 200 ? res.statusCode : 500);
 

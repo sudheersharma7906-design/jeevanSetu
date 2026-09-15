@@ -1,21 +1,25 @@
 // src/App.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider, useSocket } from './context/SocketContext';
-import { EmergencyProvider, useEmergency } from './context/EmergencyContext';
+import { EmergencyProvider } from './context/EmergencyContext';
 import { MedicalDataProvider } from './context/MedicalDataContext';
 import { Navbar } from './components/common/Navbar';
 import { SOSButton } from './components/emergency/SOSButton';
 import { EmergencyAlertBanner } from './components/common/EmergencyAlertBanner';
-import { LoginScreen } from './pages/LoginScreen';
-import { PatientDashboard } from './pages/PatientDashboard';
-import { RmpDashboard } from './pages/RmpDashboard';
-import { RmpEmergencyScreen } from './pages/RmpEmergencyScreen';
-import { DoctorDashboard } from './pages/DoctorDashboard';
-import { AdminDashboard } from './pages/AdminDashboard';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { soundManager } from './utils/soundEffects';
 import { AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
+
+// Lazy-loaded page components for bundle optimization & code splitting
+const LoginScreen = lazy(() => import('./pages/LoginScreen').then(m => ({ default: m.LoginScreen || m.default })));
+const PatientDashboard = lazy(() => import('./pages/PatientDashboard').then(m => ({ default: m.PatientDashboard || m.default })));
+const RmpDashboard = lazy(() => import('./pages/RmpDashboard').then(m => ({ default: m.RmpDashboard || m.default })));
+const RmpEmergencyScreen = lazy(() => import('./pages/RmpEmergencyScreen').then(m => ({ default: m.RmpEmergencyScreen || m.default })));
+const DoctorDashboard = lazy(() => import('./pages/DoctorDashboard').then(m => ({ default: m.DoctorDashboard || m.default })));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard || m.default })));
 
 const ToastContainer = () => {
   const { toasts, dismissToast } = useSocket();
@@ -107,7 +111,11 @@ const MainAppContent = () => {
   }, []);
 
   if (!isAuthenticated) {
-    return <LoginScreen />;
+    return (
+      <Suspense fallback={<LoadingSpinner label="Loading Login Portal..." />}>
+        <LoginScreen />
+      </Suspense>
+    );
   }
 
   return (
@@ -125,26 +133,28 @@ const MainAppContent = () => {
       {/* Real-time Toast Alerts Container */}
       <ToastContainer />
 
-      {/* Main Page Area */}
+      {/* Main Page Area wrapped in Suspense & ErrorBoundary */}
       <main className="main-content">
-        {role === 'patient' && <PatientDashboard />}
+        <Suspense fallback={<LoadingSpinner label="Loading Workspace..." />}>
+          {role === 'patient' && <PatientDashboard />}
 
-        {role === 'rmp' && (
-          selectedEmergencyAlert ? (
-            <RmpEmergencyScreen
-              alert={selectedEmergencyAlert}
-              onBack={() => setSelectedEmergencyAlert(null)}
-            />
-          ) : (
-            <RmpDashboard
-              onOpenEmergencyScreen={(alert) => setSelectedEmergencyAlert(alert)}
-            />
-          )
-        )}
+          {role === 'rmp' && (
+            selectedEmergencyAlert ? (
+              <RmpEmergencyScreen
+                alert={selectedEmergencyAlert}
+                onBack={() => setSelectedEmergencyAlert(null)}
+              />
+            ) : (
+              <RmpDashboard
+                onOpenEmergencyScreen={(alert) => setSelectedEmergencyAlert(alert)}
+              />
+            )
+          )}
 
-        {role === 'doctor' && <DoctorDashboard />}
+          {role === 'doctor' && <DoctorDashboard />}
 
-        {role === 'admin' && <AdminDashboard />}
+          {role === 'admin' && <AdminDashboard />}
+        </Suspense>
       </main>
 
       {/* Global Floating SOS Button */}
@@ -157,16 +167,18 @@ const MainAppContent = () => {
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <SocketProvider>
-          <EmergencyProvider>
-            <MedicalDataProvider>
-              <MainAppContent />
-            </MedicalDataProvider>
-          </EmergencyProvider>
-        </SocketProvider>
-      </AuthProvider>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <AuthProvider>
+          <SocketProvider>
+            <EmergencyProvider>
+              <MedicalDataProvider>
+                <MainAppContent />
+              </MedicalDataProvider>
+            </EmergencyProvider>
+          </SocketProvider>
+        </AuthProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 }
