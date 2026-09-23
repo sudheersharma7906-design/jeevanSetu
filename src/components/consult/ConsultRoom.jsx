@@ -193,14 +193,7 @@ export const ConsultRoom = ({ patient, onEndCall, onOpenPrescription }) => {
   };
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1.8fr) minmax(320px, 1.2fr)',
-        gap: '1.5rem',
-        minHeight: '620px'
-      }}
-    >
+    <div className="consult-room-grid">
       {/* 1. Video Conference Viewport */}
       <div
         style={{

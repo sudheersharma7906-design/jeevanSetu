@@ -4,7 +4,7 @@ const LanguageContext = createContext();
 
 export const DICTIONARY = {
   en: {
-    appName: 'JivanSetu',
+    appName: 'JeevanSetu',
     appTagline: 'Rural Emergency Triage & Teleconsultation Bridge',
     loginTitle: 'Secure Healthcare Access',
     loginSubtitle: 'Mobile Number & Password Login',

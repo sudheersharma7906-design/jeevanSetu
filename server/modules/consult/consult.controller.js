@@ -16,7 +16,7 @@ export class ConsultController {
         notes: req.body.notes
       };
 
-      const result = ConsultService.escalateCase(data);
+      const result = await ConsultService.escalateCase(data);
       res.status(201).json({
         success: true,
         message: 'Case escalated to specialist consult queue.',
@@ -33,7 +33,7 @@ export class ConsultController {
   static async getQueue(req, res) {
     try {
       const { specialty, doctorId, status, rmpId } = req.query;
-      const queue = ConsultService.getQueue({ specialty, doctorId, status, rmpId });
+      const queue = await ConsultService.getQueue({ specialty, doctorId, status, rmpId });
       res.status(200).json({
         success: true,
         count: queue.length,
@@ -49,7 +49,7 @@ export class ConsultController {
 
   static async getById(req, res) {
     try {
-      const consult = ConsultService.getConsultById(req.params.id);
+      const consult = await ConsultService.getConsultById(req.params.id);
       res.status(200).json({
         success: true,
         consult
@@ -65,7 +65,7 @@ export class ConsultController {
   static async updateStatus(req, res) {
     try {
       const { status, notes } = req.body;
-      const updated = ConsultService.updateStatus(req.params.id, status, notes);
+      const updated = await ConsultService.updateStatus(req.params.id, status, notes);
       res.status(200).json({
         success: true,
         consult: updated
@@ -82,7 +82,7 @@ export class ConsultController {
     try {
       const { diagnosis, advice } = req.body;
       const doctorId = req.user?.id || req.body.doctorId;
-      const updated = ConsultService.completeConsult(req.params.id, { diagnosis, advice, doctorId });
+      const updated = await ConsultService.completeConsult(req.params.id, { diagnosis, advice, doctorId });
       res.status(200).json({
         success: true,
         consult: updated
@@ -109,7 +109,7 @@ export class ConsultController {
         followUpDate: req.body.followUpDate
       };
 
-      const prescription = PrescriptionService.createPrescription(rxData);
+      const prescription = await PrescriptionService.createPrescription(rxData);
       res.status(201).json({
         success: true,
         message: 'Prescription generated with digital signature hash.',

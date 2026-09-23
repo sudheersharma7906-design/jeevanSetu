@@ -15,6 +15,7 @@ router.post('/register', authLoginLimiter, validateSignup, AuthController.signup
 // Public OTP authentication routes (legacy fallback)
 router.post('/otp/request', authOtpRequestLimiter, validateOtpRequest, AuthController.requestOtp);
 router.post('/otp/verify', authOtpVerifyLimiter, validateOtpVerify, AuthController.verifyOtp);
+router.post('/reset-password', authOtpRequestLimiter, AuthController.resetPassword);
 
 // Session token management
 router.post('/refresh', AuthController.refreshToken);

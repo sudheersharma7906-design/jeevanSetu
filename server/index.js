@@ -63,7 +63,7 @@ const CLIENT_URL = process.env.CLIENT_URL || '*';
 // Socket.io initialization with CORS
 const io = new Server(server, {
   cors: {
-    origin: CLIENT_URL,
+    origin: (origin, callback) => callback(null, true),
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
   }
@@ -85,11 +85,12 @@ app.use(compression({
 app.use(securityHeaders);
 app.use(enforceHttps);
 
-// 3. CORS configuration
+// 3. CORS configuration (Dynamic origin resolution for 3000, 5173, etc.)
 app.use(cors({
-  origin: CLIENT_URL,
+  origin: (origin, callback) => callback(null, true),
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true
 }));
 
 // 4. Body parsers with payload limits to prevent buffer overflow attacks

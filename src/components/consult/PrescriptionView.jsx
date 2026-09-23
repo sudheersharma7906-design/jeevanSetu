@@ -236,7 +236,7 @@ export const PrescriptionView = ({ prescription }) => {
         {/* Footer Signature */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: '1rem', borderTop: '1px dashed var(--slate-300)' }}>
           <div style={{ fontSize: '0.7rem', color: 'var(--slate-400)' }}>
-            Generated via JivanSetu Rural Telemedicine Platform | National Digital Health Mission Compliant
+            Generated via JeevanSetu Rural Telemedicine Platform | National Digital Health Mission Compliant
           </div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontFamily: 'cursive', fontSize: '1.1rem', color: 'var(--primary-800)', fontWeight: 700 }}>

@@ -77,13 +77,7 @@ export const RmpEmergencyScreen = ({ alert, onBack }) => {
       </div>
 
       {/* Main Layout: Map & Patient Details */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.6fr) minmax(320px, 1.1fr)',
-          gap: '1.5rem'
-        }}
-      >
+      <div className="rmp-emergency-grid">
         {/* Left: Leaflet Live Map */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

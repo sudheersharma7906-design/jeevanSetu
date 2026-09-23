@@ -26,7 +26,7 @@ export class AuthController {
 
   static async signup(req, res) {
     try {
-      const result = AuthService.signup(req.body);
+      const result = await AuthService.signup(req.body);
       res.status(201).json({
         success: true,
         ...result
@@ -58,7 +58,7 @@ export class AuthController {
   static async verifyOtp(req, res) {
     try {
       const { phone, otp } = req.body;
-      const result = AuthService.verifyOtp(phone, otp);
+      const result = await AuthService.verifyOtp(phone, otp);
       res.status(200).json({
         success: true,
         ...result
@@ -131,6 +131,22 @@ export class AuthController {
       });
     } catch (err) {
       res.status(404).json({
+        success: false,
+        error: err.message
+      });
+    }
+  }
+
+  static async resetPassword(req, res) {
+    try {
+      const { phone, otp, newPassword } = req.body;
+      const result = await AuthService.resetPassword(phone, otp, newPassword);
+      res.status(200).json({
+        success: true,
+        ...result
+      });
+    } catch (err) {
+      res.status(400).json({
         success: false,
         error: err.message
       });

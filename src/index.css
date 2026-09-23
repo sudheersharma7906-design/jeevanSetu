@@ -639,18 +639,73 @@ button, input, select, textarea {
   margin-bottom: 1rem;
 }
 
+/* Custom Responsive Split Grids & Layout Containers */
+.consult-room-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(300px, 1.2fr);
+  gap: 1.5rem;
+  min-height: 620px;
+}
+
+.rmp-emergency-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1.1fr);
+  gap: 1.5rem;
+}
+
+.sos-tracker-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1rem;
+}
+
+.nav-actions-container {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.nav-user-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--slate-100);
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--slate-200);
+}
+
 /* ==========================================================================
    Comprehensive Device Responsive Media Queries (Mobile, Tablet, Laptop, Desktop)
    ========================================================================== */
 
-/* Laptops & Mid-size Displays (960px - 1180px) */
-@media (max-width: 1180px) {
+/* Large Screens (1440px+) */
+@media (min-width: 1440px) {
+  .main-content {
+    max-width: 1400px;
+  }
+}
+
+/* Laptops & Mid-size Displays (1024px - 1200px) */
+@media (max-width: 1200px) {
   .grid-4 {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-/* Tablets (768px - 960px) */
+/* Tablets & iPads (768px - 1024px) */
+@media (max-width: 1024px) {
+  .consult-room-grid,
+  .rmp-emergency-grid {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+  
+  .sos-tracker-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 960px) {
   .grid-3 {
     grid-template-columns: repeat(2, 1fr);
@@ -661,7 +716,15 @@ button, input, select, textarea {
   }
   
   .modal-card {
-    max-width: 92vw;
+    max-width: 94vw;
+  }
+
+  .nav-btn-text {
+    display: none;
+  }
+
+  .nav-action-btn {
+    padding: 0.4rem 0.6rem;
   }
 }
 
@@ -676,19 +739,19 @@ button, input, select, textarea {
   }
 
   .card {
-    padding: 1.1rem 1rem;
+    padding: 1.1rem 0.9rem;
     border-radius: var(--radius-md);
   }
 
   .floating-sos-container {
     bottom: 1.25rem;
-    right: 1.25rem;
+    right: 1rem;
   }
 
   .floating-sos-btn {
-    width: 64px;
-    height: 64px;
-    font-size: 0.82rem;
+    width: 62px;
+    height: 62px;
+    font-size: 0.8rem;
   }
 
   /* Improved touch feedback & input sizes for Android & iOS */
@@ -699,6 +762,7 @@ button, input, select, textarea {
   .modal-card {
     padding: 1.25rem 1rem;
     border-radius: var(--radius-lg);
+    width: 96vw;
   }
 
   .demo-role-ribbon {
@@ -710,6 +774,18 @@ button, input, select, textarea {
     -webkit-overflow-scrolling: touch;
     width: 100%;
     padding-bottom: 4px;
+  }
+
+  .nav-user-details {
+    display: none !important;
+  }
+
+  .nav-user-badge {
+    padding: 0.3rem 0.4rem;
+  }
+
+  .nav-actions-container {
+    gap: 0.35rem;
   }
 }
 
@@ -730,28 +806,43 @@ button, input, select, textarea {
 
   .navbar {
     padding: 0.5rem 0.65rem;
-    gap: 0.5rem;
+    gap: 0.4rem;
   }
 
   .btn {
-    padding: 0.55rem 0.9rem;
+    padding: 0.55rem 0.85rem;
     font-size: 0.85rem;
   }
 
   .floating-sos-container {
-    bottom: 1rem;
-    right: 1rem;
+    bottom: 0.85rem;
+    right: 0.85rem;
   }
 
   .floating-sos-btn {
-    width: 58px;
-    height: 58px;
-    font-size: 0.78rem;
+    width: 56px;
+    height: 56px;
+    font-size: 0.75rem;
     border-width: 3px;
   }
 
   .modal-backdrop {
-    padding: 0.5rem;
+    padding: 0.4rem;
+  }
+
+  .table-responsive {
+    font-size: 0.8rem;
+  }
+}
+
+/* Ultra-Compact Mobile Screens (under 360px) */
+@media (max-width: 360px) {
+  .main-content {
+    padding: 0.5rem 0.35rem;
+  }
+
+  .card {
+    padding: 0.85rem 0.65rem;
   }
 }
 

@@ -29,7 +29,19 @@ export async function connectDB() {
     console.log(`[MongoDB] Connected to ${targetType} at ${conn.connection.host}/${conn.connection.name}`);
     return conn;
   } catch (error) {
-    console.warn(`[MongoDB] Connection notice: ${error.message}. Running in fallback in-memory/mock mode if needed.`);
+    console.warn(`[MongoDB] Primary DB Connection notice: ${error.message}`);
+
+    // If Atlas connection failed (e.g. IP whitelist / network block), fallback to local MongoDB
+    if (MONGODB_URI.includes('mongodb.net') || MONGODB_URI.startsWith('mongodb+srv')) {
+      try {
+        console.log('[MongoDB] Attempting fallback to Local MongoDB (mongodb://127.0.0.1:27017/jeevansetu)...');
+        const localConn = await mongoose.connect('mongodb://127.0.0.1:27017/jeevansetu', MONGO_OPTIONS);
+        console.log(`[MongoDB] Connected to Local MongoDB at ${localConn.connection.host}/${localConn.connection.name}`);
+        return localConn;
+      } catch (localErr) {
+        console.warn(`[MongoDB] Local MongoDB fallback failed: ${localErr.message}. Running in fallback in-memory mode.`);
+      }
+    }
     return null;
   }
 }

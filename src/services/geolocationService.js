@@ -174,4 +174,27 @@ export class GeolocationService {
     const minutes = Math.max(2, Math.round(hours * 60));
     return `${minutes}-${minutes + 3} mins`;
   }
+
+  /**
+   * Send high-accuracy GPS coordinates to backend emergency location endpoint.
+   */
+  static async sendLocationToServer(emergencyId, coords) {
+    try {
+      const response = await fetch('/api/emergency/location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emergencyId,
+          latitude: coords.latitude || coords.lat,
+          longitude: coords.longitude || coords.lng,
+          accuracy: coords.accuracy || 10,
+          address: coords.address || ''
+        })
+      });
+      return await response.json();
+    } catch (err) {
+      console.warn('[GEOLOCATION] Failed to send live GPS coordinates to backend:', err.message);
+      return { success: false, error: err.message };
+    }
+  }
 }

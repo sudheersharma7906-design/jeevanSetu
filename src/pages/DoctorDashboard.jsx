@@ -225,7 +225,7 @@ export const DoctorDashboard = () => {
                   transition: 'all 0.2s ease'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', flex: 1, minWidth: '300px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', flex: 1, minWidth: '220px' }}>
                   <div
                     style={{
                       width: '46px',

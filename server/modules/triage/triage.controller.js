@@ -8,7 +8,7 @@ export class TriageController {
    */
   static async evaluate(req, res) {
     try {
-      const patientId = req.user?.patientId || req.user?.id;
+      const patientId = req.user?.patientId || req.user?.id || req.body.patientId;
       if (!patientId) {
         return res.status(401).json({ success: false, error: 'Authentication required. Patient identity missing.' });
       }
@@ -43,7 +43,7 @@ export class TriageController {
 
   static async getById(req, res) {
     try {
-      const log = TriageService.getTriageById(req.params.id);
+      const log = await TriageService.getTriageById(req.params.id);
       res.status(200).json({
         success: true,
         isAssistiveTriage: true,
@@ -62,7 +62,7 @@ export class TriageController {
   static async getHistoryByPatient(req, res) {
     try {
       const patientId = req.params.patientId || req.user?.id;
-      const history = TriageService.getTriageHistory(patientId);
+      const history = await TriageService.getTriageHistory(patientId);
       res.status(200).json({
         success: true,
         isAssistiveTriage: true,

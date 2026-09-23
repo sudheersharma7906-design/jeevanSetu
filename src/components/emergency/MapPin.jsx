@@ -10,25 +10,71 @@ export const MapPin = ({
   rmpName = 'Dr. Anand Verma (RMP)',
   distance: customDistance = null,
   eta: customEta = null,
-  height = '340px'
+  height = '340px',
+  onLocationUpdate = null
 }) => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const { lang } = useLanguage();
-  const [mapLayer, setMapLayer] = useState('osm'); // 'osm' | 'satellite'
+
+  // Layer options: 'google' (Google Roadmap) | 'google_hybrid' (Google Satellite) | 'osm' (OpenStreetMap)
+  const [mapLayer, setMapLayer] = useState('google');
+  const [liveLocation, setLiveLocation] = useState(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationStatus, setLocationStatus] = useState('');
+
+  const activePatientCoords = liveLocation?.coords || patientCoords;
 
   // Auto calculate dynamic distance & ETA if not manually provided
   const computedDistance = GeolocationService.calculateDistanceKm(
     rmpCoords.lat,
     rmpCoords.lng,
-    patientCoords.lat,
-    patientCoords.lng
+    activePatientCoords.lat,
+    activePatientCoords.lng
   );
   const distance = customDistance || `${computedDistance} km`;
   const eta = customEta || GeolocationService.estimateEtaMinutes(computedDistance);
 
-  // Google Maps Turn-by-Turn URL
-  const googleMapsNavUrl = `https://www.google.com/maps/dir/?api=1&origin=${rmpCoords.lat},${rmpCoords.lng}&destination=${patientCoords.lat},${patientCoords.lng}&travelmode=driving`;
+  // Google Maps URLs
+  const googleMapsNavUrl = `https://www.google.com/maps/dir/?api=1&origin=${rmpCoords.lat},${rmpCoords.lng}&destination=${activePatientCoords.lat},${activePatientCoords.lng}&travelmode=driving`;
+  const googleMapsPinUrl = `https://www.google.com/maps/search/?api=1&query=${activePatientCoords.lat},${activePatientCoords.lng}`;
+
+  const handleShareRealLocation = async () => {
+    setIsLocating(true);
+    setLocationStatus(lang === 'hi' ? 'जीपीएस लोकेशन प्राप्त की जा रही है...' : 'Acquiring real GPS location...');
+    try {
+      const geo = await GeolocationService.getCurrentPosition({ timeout: 10000 });
+      if (geo && geo.latitude) {
+        const coords = { lat: geo.latitude, lng: geo.longitude };
+        setLiveLocation({
+          coords,
+          address: geo.address,
+          accuracy: geo.accuracy,
+          isFallback: geo.isFallback
+        });
+        setLocationStatus(
+          geo.isFallback
+            ? (lang === 'hi' ? 'डिफ़ॉल्ट ग्रामीण जीपीएस' : 'Default Rural GPS')
+            : (lang === 'hi' ? `सटीक जीपीएस प्राप्त! (±${geo.accuracy}m)` : `Live GPS Acquired (±${geo.accuracy}m)`)
+        );
+
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.setView([geo.latitude, geo.longitude], 15);
+        }
+        if (onLocationUpdate) {
+          onLocationUpdate({
+            coordinates: coords,
+            address: geo.address,
+            accuracy: geo.accuracy
+          });
+        }
+      }
+    } catch (err) {
+      setLocationStatus(lang === 'hi' ? 'जीपीएस त्रुटि।' : 'GPS acquisition failed.');
+    } finally {
+      setIsLocating(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -39,31 +85,40 @@ export const MapPin = ({
 
         if (!mapContainerRef.current || !isMounted) return;
 
-        // Cleanup existing map if any
+        // Safe cleanup existing map if any
         if (mapInstanceRef.current) {
-          mapInstanceRef.current.remove();
+          try {
+            mapInstanceRef.current.off();
+            mapInstanceRef.current.remove();
+          } catch (e) {}
           mapInstanceRef.current = null;
         }
 
-        const centerLat = (patientCoords.lat + rmpCoords.lat) / 2;
-        const centerLng = (patientCoords.lng + rmpCoords.lng) / 2;
+        const centerLat = (activePatientCoords.lat + rmpCoords.lat) / 2;
+        const centerLng = (activePatientCoords.lng + rmpCoords.lng) / 2;
 
         const map = L.map(mapContainerRef.current, {
           center: [centerLat, centerLng],
           zoom: 13,
-          zoomControl: true
+          zoomControl: true,
+          fadeAnimation: false,
+          zoomAnimation: false,
+          markerZoomAnimation: false
         });
 
-        // Add Tile Layer based on layer selection
-        const tileUrl = mapLayer === 'satellite'
-          ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-          : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        // Add Tile Layer (Google Maps Standard, Google Maps Hybrid, or OpenStreetMap)
+        let tileUrl = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+        let attribution = '&copy; Google Maps';
 
-        const attribution = mapLayer === 'satellite'
-          ? '&copy; Esri World Imagery'
-          : '&copy; OpenStreetMap contributors';
+        if (mapLayer === 'google_hybrid') {
+          tileUrl = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
+          attribution = '&copy; Google Maps Satellite & Hybrid';
+        } else if (mapLayer === 'osm') {
+          tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+          attribution = '&copy; OpenStreetMap contributors';
+        }
 
-        L.tileLayer(tileUrl, { attribution, maxZoom: 19 }).addTo(map);
+        L.tileLayer(tileUrl, { attribution, maxZoom: 20 }).addTo(map);
 
         // Custom Patient Icon (Red Emergency Pulsing Pin)
         const patientIcon = L.divIcon({
@@ -163,7 +218,10 @@ export const MapPin = ({
     return () => {
       isMounted = false;
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+        try {
+          mapInstanceRef.current.off();
+          mapInstanceRef.current.remove();
+        } catch (e) {}
         mapInstanceRef.current = null;
       }
     };
@@ -192,13 +250,44 @@ export const MapPin = ({
             right: '12px',
             zIndex: 1000,
             display: 'flex',
-            gap: '0.4rem',
-            background: 'rgba(15, 23, 42, 0.8)',
+            gap: '0.35rem',
+            background: 'rgba(15, 23, 42, 0.85)',
             padding: '4px',
             borderRadius: 'var(--radius-md)',
-            backdropFilter: 'blur(6px)'
+            backdropFilter: 'blur(8px)',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.3)'
           }}
         >
+          <button
+            onClick={() => setMapLayer('google')}
+            style={{
+              background: mapLayer === 'google' ? 'var(--primary-600)' : 'transparent',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              padding: '4px 8px',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            🗺️ Google Maps
+          </button>
+          <button
+            onClick={() => setMapLayer('google_hybrid')}
+            style={{
+              background: mapLayer === 'google_hybrid' ? 'var(--primary-600)' : 'transparent',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              padding: '4px 8px',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            🛰️ Satellite
+          </button>
           <button
             onClick={() => setMapLayer('osm')}
             style={{
@@ -212,22 +301,7 @@ export const MapPin = ({
               cursor: 'pointer'
             }}
           >
-            OSM Map
-          </button>
-          <button
-            onClick={() => setMapLayer('satellite')}
-            style={{
-              background: mapLayer === 'satellite' ? 'var(--primary-600)' : 'transparent',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              padding: '4px 8px',
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-          >
-            Satellite
+            OSM
           </button>
         </div>
 
@@ -260,7 +334,7 @@ export const MapPin = ({
           </div>
         </div>
 
-        {/* Direct Google Maps Turn-by-Turn Button */}
+        {/* Direct Google Maps Navigation Button */}
         <a
           href={googleMapsNavUrl}
           target="_blank"
@@ -270,25 +344,25 @@ export const MapPin = ({
             bottom: '12px',
             right: '12px',
             zIndex: 1000,
-            background: 'var(--primary-600)',
+            background: 'linear-gradient(135deg, #4285F4, #1a73e8)',
             color: 'white',
             padding: '0.5rem 0.85rem',
             borderRadius: 'var(--radius-md)',
             display: 'inline-flex',
             alignItems: 'center',
             gap: '0.4rem',
-            boxShadow: '0 4px 14px rgba(13, 148, 136, 0.4)',
+            boxShadow: '0 4px 14px rgba(26, 115, 232, 0.4)',
             fontSize: '0.78rem',
             fontWeight: 700,
             textDecoration: 'none'
           }}
         >
           <ExternalLink size={14} />
-          <span>{lang === 'hi' ? 'Google मैप्स में खोलें' : 'Google Maps Route'}</span>
+          <span>{lang === 'hi' ? 'गूगल मैप्स में खोलें' : 'Google Maps Route'}</span>
         </a>
       </div>
 
-      {/* Emergency GPS Metadata Bar */}
+      {/* Emergency GPS Metadata & Share Real Location Bar */}
       <div
         style={{
           display: 'flex',
@@ -302,20 +376,49 @@ export const MapPin = ({
           gap: '0.75rem'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <PinIcon size={16} color="var(--emergency-600)" />
           <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--slate-800)' }}>
             {lang === 'hi'
-              ? `मरीज़: ${patientName} (${patientCoords.lat.toFixed(4)}, ${patientCoords.lng.toFixed(4)})`
-              : `Patient: ${patientName} (${patientCoords.lat.toFixed(4)}, ${patientCoords.lng.toFixed(4)})`}
+              ? `मरीज़ जीपीएस: ${patientName} (${activePatientCoords.lat.toFixed(4)}, ${activePatientCoords.lng.toFixed(4)})`
+              : `Patient GPS: ${patientName} (${activePatientCoords.lat.toFixed(4)}, ${activePatientCoords.lng.toFixed(4)})`}
           </span>
+          {locationStatus && (
+            <span className="badge badge-primary" style={{ fontSize: '0.72rem' }}>
+              {locationStatus}
+            </span>
+          )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <ShieldCheck size={16} color="var(--primary-600)" />
-          <span style={{ fontSize: '0.85rem', color: 'var(--slate-600)' }}>
-            {lang === 'hi' ? `आरएमपी: ${rmpName}` : `Responder: ${rmpName}`}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={handleShareRealLocation}
+            disabled={isLocating}
+            className="btn btn-secondary btn-sm"
+            style={{
+              fontWeight: 700,
+              fontSize: '0.78rem',
+              gap: '0.35rem',
+              color: 'var(--primary-800)',
+              background: 'var(--primary-100)',
+              border: '1px solid var(--primary-300)'
+            }}
+          >
+            <Navigation size={14} className={isLocating ? 'spin' : ''} />
+            <span>{isLocating ? (lang === 'hi' ? 'खोजा जा रहा है...' : 'Locating...') : (lang === 'hi' ? '📍 मेरी लाइव लोकेशन अपडेट करें' : '📍 Share Real Live GPS')}</span>
+          </button>
+
+          <a
+            href={googleMapsPinUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-outline btn-sm"
+            style={{ fontWeight: 700, fontSize: '0.78rem', gap: '0.35rem' }}
+          >
+            <ExternalLink size={14} />
+            <span>{lang === 'hi' ? 'गूगल मैप्स पिन' : 'Google Maps Pin'}</span>
+          </a>
         </div>
       </div>
     </div>

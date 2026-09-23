@@ -4,7 +4,7 @@ import { AdminService } from './admin.service.js';
 export class AdminController {
   static async getStats(req, res) {
     try {
-      const stats = AdminService.getDashboardStats();
+      const stats = await AdminService.getDashboardStats();
       res.status(200).json({
         success: true,
         stats
@@ -19,7 +19,7 @@ export class AdminController {
 
   static async getEmergencyLogs(req, res) {
     try {
-      const logs = AdminService.getEmergencyAuditLogs();
+      const logs = await AdminService.getEmergencyAuditLogs();
       res.status(200).json({
         success: true,
         count: logs.length,
@@ -36,7 +36,7 @@ export class AdminController {
   static async getUsers(req, res) {
     try {
       const { role } = req.query;
-      const users = AdminService.getAllUsers(role);
+      const users = await AdminService.getAllUsers(role);
       res.status(200).json({
         success: true,
         count: users.length,
@@ -53,7 +53,7 @@ export class AdminController {
   static async verifyUser(req, res) {
     try {
       const { verified, status } = req.body;
-      const updated = AdminService.verifyUser(req.params.id, { verified, status });
+      const updated = await AdminService.verifyUser(req.params.id, { verified, status });
       res.status(200).json({
         success: true,
         message: 'User credentials updated.',

@@ -150,7 +150,7 @@ export const SocketProvider = ({ children }) => {
       });
 
       triggerBrowserPush({
-        title: `🚨 JivanSetu Emergency SOS: ${emergency.patientName}`,
+        title: `🚨 JeevanSetu Emergency SOS: ${emergency.patientName}`,
         body: `${emergency.symptomsReported || 'Critical distress reported'}. Nearest responder alert dispatched!`
       });
 
@@ -181,13 +181,13 @@ export const SocketProvider = ({ children }) => {
 
       addToast({
         type: notif.type === 'EMERGENCY_SOS' ? 'EMERGENCY' : 'INFO',
-        title: notif.title || 'JivanSetu Alert',
+        title: notif.title || 'JeevanSetu Alert',
         message: notif.message || '',
         duration: 6000
       });
 
       triggerBrowserPush({
-        title: notif.title || 'JivanSetu Notification',
+        title: notif.title || 'JeevanSetu Notification',
         body: notif.message || ''
       });
 

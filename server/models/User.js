@@ -129,11 +129,10 @@ const UserSchema = new mongoose.Schema(
 );
 
 // Pre-save hook to hash password if modified
-UserSchema.pre('save', async function (next) {
+UserSchema.pre('save', async function () {
   if (this.isModified('password') && this.password) {
     this.passwordHash = await bcrypt.hash(this.password, 10);
   }
-  next();
 });
 
 // Compare entered password with stored hash

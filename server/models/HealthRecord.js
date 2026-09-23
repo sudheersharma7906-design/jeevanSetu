@@ -25,7 +25,13 @@ const HealthRecordSchema = new mongoose.Schema(
         'symptom_triage',
         'teleconsultation',
         'digital_prescription',
-        'emergency_sos'
+        'emergency_sos',
+        'assistive_triage',
+        'teleconsultation escalation',
+        'teleconsultation_escalation',
+        'completed teleconsultation',
+        'completed_teleconsultation',
+        'general health note'
       ],
       required: [true, 'Record type is required'],
       lowercase: true,

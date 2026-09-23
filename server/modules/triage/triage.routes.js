@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { TriageController } from './triage.controller.js';
-import { authenticateToken } from '../../middleware/auth.js';
+import { optionalAuth } from '../../middleware/auth.js';
 import { validateTriage } from '../../middleware/validator.js';
 
 const router = Router();
 
-router.post('/', authenticateToken, validateTriage, TriageController.evaluate);
+router.post('/', optionalAuth, validateTriage, TriageController.evaluate);
 router.get('/engine/info', TriageController.getEngineInfo);
-router.get('/:id', authenticateToken, TriageController.getById);
-router.get('/history/:patientId', authenticateToken, TriageController.getHistoryByPatient);
+router.get('/:id', optionalAuth, TriageController.getById);
+router.get('/history/:patientId', optionalAuth, TriageController.getHistoryByPatient);
 
 export default router;

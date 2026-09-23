@@ -80,11 +80,11 @@ export const SmsSimulatorModal = ({ isOpen, onClose }) => {
   const handlePresetChange = (type) => {
     setDispatchType(type);
     if (type === 'EMERGENCY_SOS') {
-      setCustomMsg('🚨 [JIVANSETU EMERGENCY SOS] Critical Distress: Rampur Kalan. Patient: Rameshwar Patil (54M). Respond: http://localhost:5173/?sos=sos-101');
+      setCustomMsg('🚨 [JEEVANSETU EMERGENCY SOS] Critical Distress: Rampur Kalan. Patient: Rameshwar Patil (54M). Respond: http://localhost:5173/?sos=sos-101');
     } else if (type === 'CONSULT_REMINDER') {
-      setCustomMsg('🩺 [JIVANSETU TELECONSULT] Reminder: Your video consultation with Dr. Priya Sharma starts in 15 mins. Join: http://localhost:5173/?consult=con-101');
+      setCustomMsg('🩺 [JEEVANSETU TELECONSULT] Reminder: Your video consultation with Dr. Priya Sharma starts in 15 mins. Join: http://localhost:5173/?consult=con-101');
     } else if (type === 'PRESCRIPTION_READY') {
-      setCustomMsg('💊 [JIVANSETU DIGITAL RX] Your prescription from Dr. Priya Sharma is ready with 3 medicines. View: http://localhost:5173/?rx=rx-101');
+      setCustomMsg('💊 [JEEVANSETU DIGITAL RX] Your prescription from Dr. Priya Sharma is ready with 3 medicines. View: http://localhost:5173/?rx=rx-101');
     }
   };
 

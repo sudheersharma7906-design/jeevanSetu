@@ -353,7 +353,7 @@ export const NotificationBell = ({ onNavigate }) => {
               color: 'var(--slate-500)'
             }}
           >
-            <span>⚡ JivanSetu Real-Time & Web Push</span>
+            <span>⚡ JeevanSetu Real-Time & Web Push</span>
             <span>{notifications.length} alerts</span>
           </div>
         </div>

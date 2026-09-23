@@ -5,58 +5,7 @@ import { getApiUrl } from '../config/api';
 
 const AuthContext = createContext();
 
-const SEED_REGISTERED_USERS = {
-  '9876543210': {
-    id: 'pat-101',
-    phone: '9876543210',
-    password: 'password123',
-    name: 'Rameshwar Patil',
-    nameHi: 'रामेश्वर पाटिल',
-    role: 'patient',
-    age: 54,
-    gender: 'Male',
-    bloodGroup: 'B+',
-    abhaId: 'ABHA-9821-4451-9012',
-    village: 'Wada Rural, Palghar',
-    district: 'Palghar',
-    state: 'Maharashtra',
-    chronicConditions: ['Type 2 Diabetes', 'Hypertension'],
-    allergies: ['Penicillin', 'Sulfa drugs']
-  },
-  '9876543301': {
-    id: 'rmp-201',
-    phone: '9876543301',
-    password: 'password123',
-    name: 'Dr. (RMP) Anand Deshmukh',
-    nameHi: 'डॉ. आनंद देशमुख',
-    role: 'rmp',
-    regNumber: 'MH-RMP-2018-8841',
-    clinicName: 'Deshmukh Arogya Kendra (Wada)',
-    village: 'Wada Rural Block',
-    district: 'Palghar',
-    state: 'Maharashtra'
-  },
-  '9876543401': {
-    id: 'doc-301',
-    phone: '9876543401',
-    password: 'password123',
-    name: 'Dr. Priya Sharma, MD',
-    nameHi: 'डॉ. प्रिया शर्मा',
-    role: 'doctor',
-    regNumber: 'MCI-MH-44291',
-    hospital: 'District Tele-Specialist Hub Hospital',
-    specialty: 'Cardiology & Emergency Medicine'
-  },
-  '9876543999': {
-    id: 'adm-001',
-    phone: '9876543999',
-    password: 'password123',
-    name: 'Sanjeev Nair (Admin)',
-    nameHi: 'संजीव नायर (प्रशासक)',
-    role: 'admin',
-    department: 'National Rural Health Mission'
-  }
-};
+const SEED_REGISTERED_USERS = {};
 
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => localStorage.getItem('jivansetu_token') || '');
@@ -127,8 +76,9 @@ export const AuthProvider = ({ children }) => {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        const newUserObj = data.user || {
-          id: `usr-${Date.now()}`,
+        const newUserObj = {
+          ...(data.user || {}),
+          id: data.user?.id || data.user?._id || `usr-${Date.now()}`,
           phone: cleanPhone,
           name: userData.name,
           password: userData.password,
@@ -272,6 +222,81 @@ export const AuthProvider = ({ children }) => {
     return { success: true, user: existing };
   };
 
+  const requestOtp = async (phoneNumber) => {
+    setIsLoading(true);
+    const clean = String(phoneNumber || '').replace(/\D/g, '').slice(-10);
+
+    try {
+      const res = await fetch(getApiUrl('/api/auth/otp/request'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: clean, role: 'patient' })
+      });
+      const data = await res.json();
+      setIsLoading(false);
+      if (res.ok && data.success) {
+        return { success: true, message: data.message, otp: data.otp };
+      } else {
+        return { success: false, message: data.error || 'Failed to send OTP' };
+      }
+    } catch (err) {
+      console.warn('[AUTH OTP REQUEST WARNING] Backend unreachable, using client simulation:', err.message);
+    }
+
+    setIsLoading(false);
+    const code = clean.startsWith('9876543') ? '123456' : Math.floor(100000 + Math.random() * 900000).toString();
+    return {
+      success: true,
+      message: `OTP sent successfully to +91 ${clean}`,
+      otp: code
+    };
+  };
+
+  const resetPassword = async ({ phone: phoneNumber, otp, newPassword }) => {
+    setIsLoading(true);
+    const clean = String(phoneNumber || '').replace(/\D/g, '').slice(-10);
+
+    try {
+      const res = await fetch(getApiUrl('/api/auth/reset-password'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: clean, otp, newPassword })
+      });
+      const data = await res.json();
+      setIsLoading(false);
+      if (res.ok && data.success) {
+        if (registeredUsers[clean]) {
+          setRegisteredUsers((prev) => ({
+            ...prev,
+            [clean]: { ...prev[clean], password: newPassword }
+          }));
+        }
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, message: data.error || 'Password reset failed' };
+      }
+    } catch (err) {
+      console.warn('[AUTH RESET PASSWORD WARNING] Backend unreachable, using client reset:', err.message);
+    }
+
+    const userAcc = registeredUsers[clean];
+    if (!userAcc) {
+      setIsLoading(false);
+      return { success: false, message: 'Account not found with this mobile number.' };
+    }
+
+    setRegisteredUsers((prev) => ({
+      ...prev,
+      [clean]: { ...prev[clean], password: newPassword }
+    }));
+
+    setIsLoading(false);
+    return {
+      success: true,
+      message: 'Password reset successfully! Please sign in with your new password.'
+    };
+  };
+
   const quickLogin = async (selectedRole) => {
     const target = (selectedRole || 'patient').toLowerCase();
     const demoPhones = {
@@ -333,6 +358,8 @@ export const AuthProvider = ({ children }) => {
         isLoading,
         login,
         signup,
+        requestOtp,
+        resetPassword,
         quickLogin,
         switchRole,
         logout

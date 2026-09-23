@@ -15,65 +15,69 @@ import {
   Hospital,
   Sparkles,
   Globe,
-  KeyRound,
   CheckCircle2,
   AlertCircle,
   UserPlus,
   LogIn,
   User,
   MapPin,
-  HeartPulse
+  HeartPulse,
+  KeyRound,
+  RefreshCw,
+  Send,
+  ArrowLeft
 } from 'lucide-react';
 
-const ROLE_DEMO_CREDENTIALS = {
+const ROLE_OPTIONS = {
   patient: {
-    phone: '9876543210',
-    password: 'DemoPass@123',
-    name: 'Rameshwar Patil',
-    nameHi: 'रामेश्वर पाटिल',
-    label: 'Patient (मरीज़)',
+    labelEn: 'Patient',
+    labelHi: 'मरीज़',
+    fullLabel: 'Patient (मरीज़)',
     icon: UserCheck
   },
   rmp: {
-    phone: '9876543301',
-    password: 'DemoPass@123',
-    name: 'Dr. Anand Deshmukh',
-    nameHi: 'डॉ. आनंद देशमुख',
-    label: 'RMP (ग्रामीण चिकित्सक)',
+    labelEn: 'RMP Doctor',
+    labelHi: 'ग्रामीण चिकित्सक',
+    fullLabel: 'RMP (ग्रामीण चिकित्सक)',
     icon: Activity
   },
   doctor: {
-    phone: '9876543401',
-    password: 'DemoPass@123',
-    name: 'Dr. Priya Sharma',
-    nameHi: 'डॉ. प्रिया शर्मा',
-    label: 'Doctor (विशेषज्ञ डॉक्टर)',
+    labelEn: 'Specialist Doctor',
+    labelHi: 'विशेषज्ञ डॉक्टर',
+    fullLabel: 'Doctor (विशेषज्ञ डॉक्टर)',
     icon: Stethoscope
   },
   admin: {
-    phone: '9876543999',
-    password: 'DemoPass@123',
-    name: 'Sanjeev Nair (Admin)',
-    nameHi: 'संजीव नायर (प्रशासक)',
-    label: 'Admin (प्रशासक)',
+    labelEn: 'Admin',
+    labelHi: 'प्रशासक',
+    fullLabel: 'Admin (प्रशासक)',
     icon: Hospital
   }
 };
 
 export const LoginScreen = () => {
-  const { login, signup, quickLogin, isLoading } = useAuth();
+  const { login, signup, requestOtp, resetPassword, isLoading } = useAuth();
   const { lang, toggleLanguage, t } = useLanguage();
 
   const isHindi = lang === 'hi';
 
-  // Mode: 'signin' | 'signup'
+  // Mode: 'signin' | 'signup' | 'forgot'
   const [authMode, setAuthMode] = useState('signin');
 
   // Sign In Form State
   const [selectedRole, setSelectedRole] = useState('patient');
-  const [phone, setPhone] = useState(ROLE_DEMO_CREDENTIALS.patient.phone);
-  const [password, setPassword] = useState(ROLE_DEMO_CREDENTIALS.patient.password);
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Forgot Password Form State
+  const [resetPhone, setResetPhone] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [sentOtpCode, setSentOtpCode] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
   // Sign Up Form State
   const [signupRole, setSignupRole] = useState('patient');
@@ -97,13 +101,77 @@ export const LoginScreen = () => {
   // Handle Role Selection on Sign In Tab
   const handleRoleSelect = (roleKey) => {
     setSelectedRole(roleKey);
-    const creds = ROLE_DEMO_CREDENTIALS[roleKey];
-    if (creds) {
-      setPhone(creds.phone);
-      setPassword(creds.password);
-    }
     setErrorMsg('');
     setSuccessMsg('');
+  };
+
+  // Handle Request OTP for Forgot Password
+  const handleRequestOtpSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    const clean = resetPhone.replace(/\D/g, '').slice(-10);
+    if (!clean || clean.length !== 10) {
+      setErrorMsg(isHindi ? 'कृपया मान्य १० अंकों का मोबाइल नंबर दर्ज करें।' : 'Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    const res = await requestOtp(clean);
+    if (res.success) {
+      setOtpSent(true);
+      setSentOtpCode(res.otp || '');
+      setSuccessMsg(
+        isHindi
+          ? `📲 +91 ${clean} पर ६-अंकों का ओटीपी भेजा गया है।${res.otp ? ` (परीक्षण कोड: ${res.otp})` : ''}`
+          : `📲 Verification OTP sent to +91 ${clean}.${res.otp ? ` (Test OTP: ${res.otp})` : ''}`
+      );
+    } else {
+      setErrorMsg(res.message || (isHindi ? 'ओटीपी भेजने में विफल। कृपया पुनः प्रयास करें।' : 'Failed to send OTP. Please check the number.'));
+    }
+  };
+
+  // Handle Password Reset Submit
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    const clean = resetPhone.replace(/\D/g, '').slice(-10);
+    if (!clean || clean.length !== 10) {
+      setErrorMsg(isHindi ? 'कृपया मान्य १० अंकों का मोबाइल नंबर दर्ज करें।' : 'Please enter a valid 10-digit mobile number.');
+      return;
+    }
+    if (!resetOtp || resetOtp.length < 4) {
+      setErrorMsg(isHindi ? 'कृपया ६-अंकों का सत्यापन ओटीपी दर्ज करें।' : 'Please enter the 6-digit verification OTP code.');
+      return;
+    }
+    if (!newPassword || newPassword.length < 4) {
+      setErrorMsg(isHindi ? 'नया पासवर्ड कम से कम ४ अक्षरों का होना चाहिए।' : 'New password must be at least 4 characters long.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setErrorMsg(isHindi ? 'पासवर्ड और पुष्टि पासवर्ड मेल नहीं खाते।' : 'New passwords do not match. Please re-enter.');
+      return;
+    }
+
+    const res = await resetPassword({ phone: clean, otp: resetOtp, newPassword });
+    if (res.success) {
+      setAuthMode('signin');
+      setPhone(clean);
+      setPassword(newPassword);
+      setSuccessMsg(
+        isHindi
+          ? '🎉 पासवर्ड सफलतापूर्वक बदल दिया गया है! कृपया अपने नए पासवर्ड से साइन इन करें।'
+          : '🎉 Password reset successfully! Please sign in with your new password.'
+      );
+      setResetOtp('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setOtpSent(false);
+    } else {
+      setErrorMsg(res.message || (isHindi ? 'पासवर्ड रीसेट करने में विफल।' : 'Failed to reset password. Please check your details.'));
+    }
   };
 
   // Handle Sign In Submit
@@ -377,7 +445,7 @@ export const LoginScreen = () => {
                   {isHindi ? 'पहुंच भूमिका चुनें (Select Portal Role):' : 'Select Portal Role:'}
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.45rem' }}>
-                  {Object.entries(ROLE_DEMO_CREDENTIALS).map(([key, roleInfo]) => {
+                  {Object.entries(ROLE_OPTIONS).map(([key, roleInfo]) => {
                     const isSelected = selectedRole === key;
                     const Icon = roleInfo.icon;
                     return (
@@ -403,7 +471,7 @@ export const LoginScreen = () => {
                       >
                         <Icon size={16} color={isSelected ? 'var(--primary-700)' : 'var(--slate-500)'} />
                         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {isHindi ? roleInfo.nameHi.split(' ')[0] : roleInfo.label.split(' ')[0]}
+                          {isHindi ? roleInfo.labelHi : roleInfo.labelEn}
                         </span>
                       </button>
                     );
@@ -439,7 +507,7 @@ export const LoginScreen = () => {
                     className="form-input"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="9876543210"
+                    placeholder={isHindi ? '१० अंकों का मोबाइल नंबर' : '10-digit mobile number'}
                     maxLength={10}
                     style={{ paddingLeft: '4.5rem', fontWeight: 600, fontSize: '0.95rem' }}
                     required
@@ -453,6 +521,26 @@ export const LoginScreen = () => {
                   <label className="form-label" style={{ fontSize: '0.82rem', marginBottom: 0 }}>
                     {isHindi ? 'पासवर्ड (Password)' : 'Password'}
                   </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('forgot');
+                      setErrorMsg('');
+                      setSuccessMsg('');
+                      if (phone) setResetPhone(phone);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--primary-700)',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    {isHindi ? 'पासवर्ड भूल गए?' : 'Forgot Password?'}
+                  </button>
                 </div>
                 <div style={{ position: 'relative' }}>
                   <Lock
@@ -513,43 +601,6 @@ export const LoginScreen = () => {
                   </>
                 )}
               </button>
-
-              {/* Demo Credentials Quick-Pills */}
-              <div
-                style={{
-                  background: 'var(--slate-50)',
-                  border: '1px dashed var(--slate-300)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '0.75rem',
-                  fontSize: '0.78rem',
-                  color: 'var(--slate-600)'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 700, color: 'var(--slate-800)', marginBottom: '0.4rem' }}>
-                  <KeyRound size={14} color="var(--primary-700)" />
-                  <span>{isHindi ? 'डेमो त्वरित क्रेडेंशियल्स (1-Click Fill):' : 'Demo 1-Click Credentials:'}</span>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                  {Object.entries(ROLE_DEMO_CREDENTIALS).map(([rKey, cred]) => (
-                    <button
-                      key={rKey}
-                      type="button"
-                      onClick={() => handleRoleSelect(rKey)}
-                      className="btn btn-ghost btn-sm"
-                      style={{
-                        padding: '0.2rem 0.5rem',
-                        fontSize: '0.72rem',
-                        background: selectedRole === rKey ? 'var(--primary-100)' : 'white',
-                        color: selectedRole === rKey ? 'var(--primary-900)' : 'var(--slate-700)',
-                        border: '1px solid var(--slate-300)',
-                        borderRadius: 'var(--radius-full)'
-                      }}
-                    >
-                      {cred.label.split(' ')[0]} ({cred.phone})
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               {/* Bottom Switcher to Sign Up */}
               <div style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--slate-600)' }}>
@@ -862,6 +913,213 @@ export const LoginScreen = () => {
                   }}
                 >
                   {isHindi ? 'साइन इन करें (Sign In)' : 'Sign In'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* ======================================================== */}
+          {/* TAB 3: FORGOT / RESET PASSWORD MODE                      */}
+          {/* ======================================================== */}
+          {authMode === 'forgot' && (
+            <form onSubmit={otpSent ? handleResetPasswordSubmit : handleRequestOtpSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+              <div style={{ textAlign: 'center', marginBottom: '0.35rem' }}>
+                <div
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '50%',
+                    background: 'var(--primary-100)',
+                    color: 'var(--primary-700)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 0.4rem'
+                  }}
+                >
+                  <KeyRound size={22} />
+                </div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--slate-900)' }}>
+                  {isHindi ? 'पासवर्ड रीसेट करें (Reset Password)' : 'Reset Account Password'}
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--slate-600)', marginTop: '2px' }}>
+                  {otpSent
+                    ? (isHindi ? 'आपके मोबाइल पर प्राप्त ६-अंकों का ओटीपी और नया पासवर्ड दर्ज करें।' : 'Enter 6-digit OTP code sent to your phone and new password.')
+                    : (isHindi ? 'ओटीपी प्राप्त करने के लिए अपना पंजीकृत 10-अंकीय मोबाइल नंबर दर्ज करें।' : 'Enter your registered 10-digit mobile number to receive OTP.')}
+                </p>
+              </div>
+
+              {/* Mobile Number Input */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.82rem' }}>
+                  {isHindi ? 'पंजीकृत मोबाइल नंबर (Mobile Number)' : 'Registered Mobile Number'}
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      color: 'var(--slate-500)',
+                      fontSize: '0.85rem',
+                      fontWeight: 600
+                    }}
+                  >
+                    <Phone size={15} />
+                    <span>+91</span>
+                  </div>
+                  <input
+                    type="tel"
+                    className="form-input"
+                    value={resetPhone}
+                    onChange={(e) => setResetPhone(e.target.value)}
+                    placeholder="9876543210"
+                    maxLength={10}
+                    disabled={otpSent}
+                    style={{ paddingLeft: '4.5rem', fontWeight: 600, fontSize: '0.95rem' }}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* OTP & New Password fields (Step 2 after OTP sent) */}
+              {otpSent && (
+                <>
+                  {/* OTP Input */}
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label className="form-label" style={{ fontSize: '0.82rem', marginBottom: 0 }}>
+                        {isHindi ? 'सत्यापन ओटीपी कोड (6-Digit OTP)' : '6-Digit Verification OTP'}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleRequestOtpSubmit}
+                        disabled={isLoading}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--primary-700)',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}
+                      >
+                        <RefreshCw size={12} />
+                        {isHindi ? 'ओटीपी पुनः भेजें' : 'Resend OTP'}
+                      </button>
+                    </div>
+                    <div style={{ position: 'relative', marginTop: '0.25rem' }}>
+                      <KeyRound size={16} color="var(--slate-400)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={resetOtp}
+                        onChange={(e) => setResetOtp(e.target.value)}
+                        placeholder="123456"
+                        maxLength={6}
+                        style={{ paddingLeft: '2.5rem', fontWeight: 700, letterSpacing: '0.2em', fontSize: '1rem' }}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* New Password & Confirm */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '0.8rem' }}>
+                        {isHindi ? 'नया पासवर्ड' : 'New Password'}
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <Lock size={15} color="var(--slate-400)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                        <input
+                          type={showResetPassword ? 'text' : 'password'}
+                          className="form-input"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Min 4 chars"
+                          style={{ paddingLeft: '2.25rem', fontSize: '0.85rem' }}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '0.8rem' }}>
+                        {isHindi ? 'पुष्टि नया पासवर्ड' : 'Confirm Password'}
+                      </label>
+                      <input
+                        type={showResetPassword ? 'text' : 'password'}
+                        className="form-input"
+                        value={confirmNewPassword}
+                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                        placeholder="Re-enter password"
+                        style={{ fontSize: '0.85rem' }}
+                        required
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Submit Action Button */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="btn btn-primary btn-lg"
+                style={{
+                  width: '100%',
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '1rem',
+                  marginTop: '0.5rem',
+                  boxShadow: '0 4px 14px rgba(13, 148, 136, 0.35)'
+                }}
+              >
+                {isLoading ? (
+                  <span>{isHindi ? 'प्रक्रिया की जा रही है...' : 'Processing...'}</span>
+                ) : otpSent ? (
+                  <>
+                    <CheckCircle2 size={18} />
+                    <span>{isHindi ? 'पासवर्ड बदलें व साइन इन करें' : 'Reset Password & Sign In'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Send size={18} />
+                    <span>{isHindi ? 'सत्यापन ओटीपी भेजें' : 'Send Verification OTP'}</span>
+                  </>
+                )}
+              </button>
+
+              {/* Back to Sign In button */}
+              <div style={{ textAlign: 'center', marginTop: '0.25rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signin');
+                    setErrorMsg('');
+                    setSuccessMsg('');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--slate-600)',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem'
+                  }}
+                >
+                  <ArrowLeft size={16} />
+                  <span>{isHindi ? 'साइन इन पर वापस जाएं' : 'Back to Sign In'}</span>
                 </button>
               </div>
             </form>

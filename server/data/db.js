@@ -22,39 +22,7 @@ class InMemoryDatabase {
     this.otps = new Map(); // phone -> { code, expiresAt, role, createdAt }
     this.otpAttempts = new Map(); // phone -> { attempts: number, lockedUntil: number }
     this.revokedTokens = new Set(); // blacklisted JWT tokens
-    this.notifications = [
-      {
-        id: 'notif-seed-1',
-        recipientRole: 'RMP',
-        type: 'EMERGENCY_SOS',
-        title: '🚨 Previous SOS Handled: Rameshwar Patil',
-        message: 'Patient stabilized. First responder arrived in 8 mins.',
-        channel: 'MULTI_CHANNEL',
-        read: true,
-        timestamp: new Date(Date.now() - 3600000).toISOString()
-      },
-      {
-        id: 'notif-seed-2',
-        recipientRole: 'PATIENT',
-        recipientId: 'pat-101',
-        type: 'PRESCRIPTION_READY',
-        title: '💊 Digital Prescription Ready',
-        message: 'Dr. Priya Sharma generated your prescription for Hypertension & Diabetes.',
-        channel: 'SMS_AND_INAPP',
-        read: false,
-        timestamp: new Date(Date.now() - 1800000).toISOString()
-      },
-      {
-        id: 'notif-seed-3',
-        recipientRole: 'ALL',
-        type: 'CONSULT_REMINDER',
-        title: '🩺 Teleconsultation Network Online',
-        message: '3 specialist doctors are currently active on JivanSetu Telemedicine.',
-        channel: 'IN_APP',
-        read: false,
-        timestamp: new Date(Date.now() - 900000).toISOString()
-      }
-    ];
+    this.notifications = [];
     this.triageLogs = [];
   }
 

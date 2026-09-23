@@ -208,8 +208,7 @@ export const PatientLiveSosTracker = ({ alert, onResolve }) => {
         ))}
       </div>
 
-      {/* Responder Card / Escalation Info */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1rem', flexWrap: 'wrap' }}>
+      <div className="sos-tracker-grid">
         {/* Left: Matched RMP / Ambulance Card */}
         <div
           style={{

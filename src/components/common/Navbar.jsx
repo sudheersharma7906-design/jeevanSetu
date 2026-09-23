@@ -62,11 +62,11 @@ export const Navbar = ({ setCurrentTab }) => {
         </div>
 
         {/* Action Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+        <div className="nav-actions-container">
           {/* Security Baseline Status Badge */}
           <button
             onClick={() => setIsSecurityModalOpen(true)}
-            className="btn btn-secondary btn-sm"
+            className="btn btn-secondary btn-sm nav-action-btn"
             title="Inspect MVP Security Baseline & Privacy"
             style={{
               gap: '0.35rem',
@@ -77,7 +77,7 @@ export const Navbar = ({ setCurrentTab }) => {
             }}
           >
             <ShieldCheck size={16} color="#059669" />
-            <span style={{ fontSize: '0.78rem' }}>{lang === 'hi' ? 'सुरक्षा 🔒' : 'Security 🔒'}</span>
+            <span className="nav-btn-text" style={{ fontSize: '0.78rem' }}>{lang === 'hi' ? 'सुरक्षा 🔒' : 'Security 🔒'}</span>
           </button>
 
           {/* Notification Bell Dropdown */}
@@ -86,26 +86,16 @@ export const Navbar = ({ setCurrentTab }) => {
           {/* Language Switcher */}
           <button
             onClick={toggleLanguage}
-            className="btn btn-secondary btn-sm"
+            className="btn btn-secondary btn-sm nav-action-btn"
             title="Toggle Language"
             style={{ gap: '0.4rem', fontWeight: 700 }}
           >
             <Globe size={15} color="var(--primary-700)" />
-            <span>{lang === 'en' ? 'हिन्दी' : 'English'}</span>
+            <span className="nav-btn-text">{lang === 'en' ? 'हिन्दी' : 'English'}</span>
           </button>
 
           {/* User Profile Badge */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              background: 'var(--slate-100)',
-              padding: '0.35rem 0.75rem',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--slate-200)'
-            }}
-          >
+          <div className="nav-user-badge">
             <div
               style={{
                 width: '28px',
@@ -117,12 +107,13 @@ export const Navbar = ({ setCurrentTab }) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: 700,
-                fontSize: '0.8rem'
+                fontSize: '0.8rem',
+                flexShrink: 0
               }}
             >
               {user?.name?.charAt(0) || 'U'}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+            <div className="nav-user-details" style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--slate-900)', maxWidth: '140px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {lang === 'hi' && user?.nameHi ? user.nameHi : user?.name}
               </span>

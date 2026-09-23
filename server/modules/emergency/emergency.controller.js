@@ -5,7 +5,7 @@ import { LOCATION_PRIVACY_POLICY } from '../../config/constants.js';
 export class EmergencyController {
   static async triggerSos(req, res) {
     try {
-      const patientId = req.user?.patientId || req.user?.id;
+      const patientId = req.user?.patientId || req.user?.id || req.body.patientId;
       if (!patientId) {
         return res.status(401).json({ success: false, error: 'Authentication required. Patient identity missing.' });
       }
@@ -20,7 +20,6 @@ export class EmergencyController {
         latitude: req.body.latitude,
         longitude: req.body.longitude,
         address: req.body.address,
-        // Explicit location privacy metadata (Zero Continuous Tracking policy)
         locationPrivacy: {
           capturedOnExplicitTrigger: true,
           privacyConsent: 'EXPLICIT_EMERGENCY_ONLY',
@@ -47,7 +46,7 @@ export class EmergencyController {
 
   static async getStatus(req, res) {
     try {
-      const emergency = EmergencyService.getStatus(req.params.id);
+      const emergency = await EmergencyService.getStatus(req.params.id);
       res.status(200).json({
         success: true,
         emergency
@@ -103,7 +102,7 @@ export class EmergencyController {
     try {
       const emergencyId = req.params.id;
       const { status, note } = req.body;
-      const updated = EmergencyService.updateStatus(emergencyId, status, note);
+      const updated = await EmergencyService.updateStatus(emergencyId, status, note);
       res.status(200).json({
         success: true,
         emergency: updated
@@ -118,7 +117,7 @@ export class EmergencyController {
 
   static async getActive(req, res) {
     try {
-      const active = EmergencyService.getActiveEmergencies();
+      const active = await EmergencyService.getActiveEmergencies();
       res.status(200).json({
         success: true,
         count: active.length,
@@ -134,7 +133,6 @@ export class EmergencyController {
 
   static async getAll(req, res) {
     try {
-      // RBAC check: patients cannot browse global emergency list
       if (req.user && req.user.role === 'patient') {
         return res.status(403).json({
           success: false,
@@ -142,7 +140,7 @@ export class EmergencyController {
         });
       }
 
-      const list = EmergencyService.getAllEmergencies();
+      const list = await EmergencyService.getAllEmergencies();
       res.status(200).json({
         success: true,
         count: list.length,
@@ -150,6 +148,44 @@ export class EmergencyController {
       });
     } catch (err) {
       res.status(500).json({
+        success: false,
+        error: err.message
+      });
+    }
+  }
+
+  static async updateLocation(req, res) {
+    try {
+      const emergencyId = req.params.id || req.body.emergencyId;
+      const latitude = req.body.latitude || req.body.lat;
+      const longitude = req.body.longitude || req.body.lng;
+      const accuracy = req.body.accuracy || 10;
+      const address = req.body.address || '';
+
+      if (!latitude || !longitude) {
+        return res.status(400).json({
+          success: false,
+          error: 'Latitude and longitude coordinates are required.'
+        });
+      }
+
+      const updated = await EmergencyService.updateLocation({
+        emergencyId,
+        latitude,
+        longitude,
+        accuracy,
+        address
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Real-time emergency GPS location updated.',
+        googleMapsUrl: updated.googleMapsUrl || `https://www.google.com/maps?q=${latitude},${longitude}`,
+        googleMapsDirUrl: updated.googleMapsDirUrl,
+        emergency: updated
+      });
+    } catch (err) {
+      res.status(400).json({
         success: false,
         error: err.message
       });

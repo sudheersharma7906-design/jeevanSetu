@@ -1,5 +1,6 @@
+// server/modules/user/user.service.js
 import { db } from '../../data/db.js';
-import { ROLES } from '../../config/constants.js';
+import { ROLES, calculateHaversineDistance } from '../../config/constants.js';
 import { User } from '../../models/User.js';
 
 export class UserService {
@@ -7,7 +8,11 @@ export class UserService {
     if (!id) throw new Error('User ID is required');
     try {
       const user = await User.findById(id);
-      if (user) return user.toObject();
+      if (user) {
+        const obj = user.toObject();
+        obj.id = obj._id.toString();
+        return obj;
+      }
     } catch (e) {}
 
     const user = db.findUserById(id);
@@ -21,11 +26,15 @@ export class UserService {
     if (!id) throw new Error('Patient ID is required');
     try {
       const user = await User.findById(id);
-      if (user && user.role === ROLES.PATIENT) return user.toObject();
+      if (user && (user.role === ROLES.PATIENT || user.role === 'patient')) {
+        const obj = user.toObject();
+        obj.id = obj._id.toString();
+        return obj;
+      }
     } catch (e) {}
 
     const user = db.findUserById(id);
-    if (!user || user.role !== ROLES.PATIENT) {
+    if (!user || (user.role !== ROLES.PATIENT && user.role !== 'patient')) {
       throw new Error(`Patient with ID '${id}' not found.`);
     }
     return user;
@@ -34,7 +43,11 @@ export class UserService {
   static async updateUserProfile(id, updates) {
     try {
       const updated = await User.findByIdAndUpdate(id, updates, { new: true });
-      if (updated) return updated.toObject();
+      if (updated) {
+        const obj = updated.toObject();
+        obj.id = obj._id.toString();
+        return obj;
+      }
     } catch (e) {}
 
     const existing = db.findUserById(id);
@@ -59,7 +72,12 @@ export class UserService {
           address: address || 'Updated Live GPS Location'
         }
       }, { new: true });
-      if (updated) return updated.toObject();
+
+      if (updated) {
+        const obj = updated.toObject();
+        obj.id = obj._id.toString();
+        return obj;
+      }
     } catch (e) {}
 
     return db.updateUser(id, {
@@ -77,7 +95,19 @@ export class UserService {
 
     try {
       const rmps = await User.findNearestRmps(lon, lat, maxDistanceKm * 1000);
-      if (rmps && rmps.length > 0) return rmps.map(r => r.toObject());
+      if (rmps && rmps.length > 0) {
+        return rmps.map(r => {
+          const obj = r.toObject();
+          const rLat = r.location?.coordinates ? r.location.coordinates[1] : lat;
+          const rLng = r.location?.coordinates ? r.location.coordinates[0] : lon;
+          const dist = calculateHaversineDistance(lat, lon, rLat, rLng);
+          return {
+            ...obj,
+            id: obj._id ? obj._id.toString() : obj.id,
+            distanceKm: parseFloat(dist.toFixed(1))
+          };
+        });
+      }
     } catch (e) {}
 
     return db.getNearbyRmps(lat, lon, maxDistanceKm);
@@ -90,7 +120,12 @@ export class UserService {
         query.specialty = { $regex: specialty, $options: 'i' };
       }
       const docs = await User.find(query);
-      if (docs && docs.length > 0) return docs.map(d => d.toObject());
+      if (docs && docs.length > 0) {
+        return docs.map(d => {
+          const obj = d.toObject();
+          return { ...obj, id: obj._id.toString() };
+        });
+      }
     } catch (e) {}
 
     let doctors = db.getAllUsers().filter(u => u.role === ROLES.DOCTOR);
@@ -108,7 +143,11 @@ export class UserService {
 
     try {
       const updated = await User.findByIdAndUpdate(rmpId, { status: status.toLowerCase() }, { new: true });
-      if (updated) return updated.toObject();
+      if (updated) {
+        const obj = updated.toObject();
+        obj.id = obj._id.toString();
+        return obj;
+      }
     } catch (e) {}
 
     const rmp = db.findUserById(rmpId);
@@ -121,7 +160,12 @@ export class UserService {
   static async getAllPatients() {
     try {
       const patients = await User.find({ role: ROLES.PATIENT });
-      if (patients && patients.length > 0) return patients.map(p => p.toObject());
+      if (patients && patients.length > 0) {
+        return patients.map(p => {
+          const obj = p.toObject();
+          return { ...obj, id: obj._id.toString() };
+        });
+      }
     } catch (e) {}
 
     return db.getAllUsers().filter(u => u.role === ROLES.PATIENT);

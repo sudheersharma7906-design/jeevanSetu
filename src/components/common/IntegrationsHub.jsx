@@ -27,7 +27,7 @@ export const IntegrationsHub = () => {
   const [deliveryLogs, setDeliveryLogs] = useState([]);
   const [testPhone, setTestPhone] = useState('+91 98112 34567');
   const [testChannel, setTestChannel] = useState('SMS'); // 'SMS' | 'WHATSAPP'
-  const [testMessage, setTestMessage] = useState('🚨 [JIVANSETU TEST] Emergency SOS Alert: Responder nearest to Rampur Kalan dispatched.');
+  const [testMessage, setTestMessage] = useState('🚨 [JEEVANSETU TEST] Emergency SOS Alert: Responder nearest to Rampur Kalan dispatched.');
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testResult, setTestResult] = useState(null);
 
