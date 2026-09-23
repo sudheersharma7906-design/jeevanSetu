@@ -129,6 +129,16 @@ export const EmergencyProvider = ({ children }) => {
     }, 1000);
   };
 
+  const watchIdRef = useRef(null);
+
+  // Stop active position watcher
+  const stopLiveTracking = () => {
+    if (watchIdRef.current) {
+      GeolocationService.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+  };
+
   // Immediate dispatch (without countdown or triggered after 5s)
   const dispatchEmergency = async (triggerSource = 'SOS Button', details = {}) => {
     if (timerRef.current) {
@@ -140,33 +150,39 @@ export const EmergencyProvider = ({ children }) => {
 
     soundManager.playEmergencySiren();
 
-    // Acquire live GPS position via Browser Geolocation API
+    // Acquire high-accuracy live GPS position via Browser Geolocation API
     let geo = {
       latitude: details.coordinates?.lat || 27.5644,
       longitude: details.coordinates?.lng || 80.6829,
-      address: details.location || 'Rampur Kalan, Sitapur (2.4 km away)'
+      address: details.location || 'Rural Emergency Location',
+      isFallback: false
     };
 
     try {
-      const liveGeo = await GeolocationService.getCurrentPosition({ timeout: 4000 });
+      const liveGeo = await GeolocationService.getCurrentPosition({ timeout: 6000 });
       if (liveGeo && liveGeo.latitude) {
         geo = {
           latitude: details.coordinates?.lat || liveGeo.latitude,
           longitude: details.coordinates?.lng || liveGeo.longitude,
           address: details.location || liveGeo.address || 'Rural Emergency Location',
-          accuracy: liveGeo.accuracy
+          accuracy: liveGeo.accuracy,
+          isFallback: liveGeo.isFallback || false
         };
       }
     } catch (geoErr) {
       console.warn('[EMERGENCY CONTEXT] Geolocation fallback used:', geoErr.message);
     }
 
+    const patientId = user?.id || user?.patientId || details.patientId || 'anonymous';
+    const patientName = user?.name || details.patientName || 'Emergency Patient';
+    const patientPhone = user?.phone || details.patientPhone || '';
+
     const emergencyPayload = {
-      patientId: details.patientId || 'pat-101',
-      name: details.patientName || 'Rameshwar Patil',
-      phone: details.patientPhone || '+91 98765 43210',
-      age: details.age || 54,
-      gender: details.gender || 'Male',
+      patientId,
+      name: patientName,
+      phone: patientPhone,
+      age: details.age || user?.age || 35,
+      gender: details.gender || user?.gender || 'Unspecified',
       triggerType: triggerSource,
       voiceTranscript: details.voiceTranscript || '',
       symptoms: details.chiefComplaint || 'Emergency SOS broadcast triggered',
@@ -177,20 +193,21 @@ export const EmergencyProvider = ({ children }) => {
       locationPrivacy: {
         capturedOnExplicitTrigger: true,
         privacyConsent: 'EXPLICIT_EMERGENCY_ONLY',
-        continuousTracking: false,
+        continuousTracking: true,
         gpsTimestamp: new Date().toISOString()
       }
     };
 
-    // 1. Emit real-time Socket.io trigger
-    socket.emit('sos:trigger', emergencyPayload);
-
-    // 2. Dispatch REST API call
+    // 1. Dispatch single REST API call (Single Source of Truth)
     let serverEmergency = null;
     try {
+      const token = localStorage.getItem('jivansetu_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch(getApiUrl('/api/emergency/sos'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(emergencyPayload)
       });
       if (res.ok) {
@@ -201,8 +218,13 @@ export const EmergencyProvider = ({ children }) => {
       console.warn('Backend REST SOS dispatch fallback:', err.message);
     }
 
+    const emergencyId = serverEmergency?.id || `sos-${Date.now().toString().slice(-4)}`;
+
+    // Join emergency socket room for targeted updates
+    socket.emit('join-emergency', { emergencyId });
+
     const newAlert = {
-      id: serverEmergency?.id || `sos-${Date.now().toString().slice(-4)}`,
+      id: emergencyId,
       patientId: emergencyPayload.patientId,
       patientName: emergencyPayload.name,
       patientPhone: emergencyPayload.phone,
@@ -215,19 +237,28 @@ export const EmergencyProvider = ({ children }) => {
       urgency: 'RED',
       status: 'DISPATCHED',
       timestamp: new Date().toISOString(),
-      assignedRmp: serverEmergency?.matchedRmp?.name || 'Dr. Anand Verma',
-      matchedRmp: serverEmergency?.matchedRmp || {
-        name: 'Dr. Anand Verma',
-        clinicName: 'Wada Rural Clinic & Post',
-        distanceKm: 2.4,
-        phone: '+91 98112 34567'
-      },
+      assignedRmp: serverEmergency?.matchedRmp?.name || 'Assigned RMP',
+      matchedRmp: serverEmergency?.matchedRmp || null,
       chiefComplaint: emergencyPayload.symptoms,
-      vitals: details.vitals || { bp: '150/98', pulse: '108 bpm', spo2: '93%' }
+      vitals: details.vitals || { bp: '130/85', pulse: '98 bpm', spo2: '96%' }
     };
 
     setActiveAlert(newAlert);
     setEmergencyList(prev => [newAlert, ...prev]);
+
+    // 2. Start continuous watchPosition() for live patient tracking during active emergency
+    stopLiveTracking();
+    watchIdRef.current = GeolocationService.watchPosition(
+      (pos) => {
+        if (pos && pos.latitude) {
+          const updatedCoords = { lat: pos.latitude, lng: pos.longitude };
+          setActiveAlert(prev => prev ? { ...prev, coordinates: updatedCoords, accuracy: pos.accuracy } : null);
+          GeolocationService.sendLocationToServer(emergencyId, pos);
+        }
+      },
+      (err) => console.warn('[LIVE TRACKING WATCHER NOTICE]', err.message),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+    );
   };
 
   // Cancel emergency countdown
@@ -236,6 +267,7 @@ export const EmergencyProvider = ({ children }) => {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    stopLiveTracking();
     setCountdown(null);
     soundManager.stopSiren();
   };
@@ -244,6 +276,7 @@ export const EmergencyProvider = ({ children }) => {
   const resolveSos = async (alertId) => {
     setIsSosActive(false);
     setActiveAlert(null);
+    stopLiveTracking();
     soundManager.stopSiren();
 
     if (alertId) {

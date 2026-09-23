@@ -17,9 +17,13 @@ export function isRmpOnline(rmpId) {
 }
 
 export function setupSocketHandlers(io) {
-  // Inject global socket emitter into services
-  const broadcastEmitter = (event, data) => {
-    io.emit(event, data);
+  // Inject global socket emitter into services with room routing support
+  const broadcastEmitter = (event, data, room) => {
+    if (room) {
+      io.to(room).emit(event, data);
+    } else {
+      io.emit(event, data);
+    }
   };
 
   EmergencyService.setSocketEmitter(broadcastEmitter);
@@ -90,10 +94,20 @@ export function setupSocketHandlers(io) {
     });
 
     // --- SOS Emergency Events ---
+    socket.on('join-emergency', ({ emergencyId }) => {
+      if (emergencyId) {
+        socket.join(`emergency:${emergencyId}`);
+        console.log(`[SOCKET] Socket ${socket.id} joined emergency room: emergency:${emergencyId}`);
+      }
+    });
+
     socket.on('sos:trigger', async (data) => {
       try {
         console.log(`[SOCKET SOS TRIGGER] Received from ${socket.id}:`, data);
         const emergency = await EmergencyService.triggerSos(data);
+        if (emergency?.id) {
+          socket.join(`emergency:${emergency.id}`);
+        }
         socket.emit('sos:triggered-success', { emergency });
       } catch (err) {
         socket.emit('sos:error', { error: err.message });
@@ -103,14 +117,20 @@ export function setupSocketHandlers(io) {
     socket.on('sos:accept', async ({ emergencyId, rmpId }) => {
       try {
         const userMeta = socketRegistry.get(socket.id);
-        const effectiveRmpId = rmpId || userMeta?.userId || 'usr-rmp-001';
+        const effectiveRmpId = userMeta?.userId || rmpId;
         const updated = await EmergencyService.acceptSos(emergencyId, effectiveRmpId);
         
-        io.emit('sos:status-update', {
+        socket.join(`emergency:${emergencyId}`);
+        io.to(`emergency:${emergencyId}`).emit('sos:status-update', {
           emergencyId,
           status: updated.status,
           matchedRmp: updated.matchedRmp,
           message: `${updated.matchedRmp?.name || 'RMP'} has accepted the emergency! First responder is en route.`
+        });
+        io.to('role:rmp').emit('sos:status-update', {
+          emergencyId,
+          status: updated.status,
+          matchedRmp: updated.matchedRmp
         });
       } catch (err) {
         socket.emit('sos:error', { error: err.message });
@@ -120,7 +140,7 @@ export function setupSocketHandlers(io) {
     socket.on('sos:escalate', async ({ emergencyId, reason, targetTier }) => {
       try {
         const updated = await EmergencyService.escalateSos(emergencyId, { reason, targetTier });
-        io.emit('sos:status-update', {
+        io.to(`emergency:${emergencyId}`).emit('sos:status-update', {
           emergencyId,
           status: updated.status,
           tier: updated.tier,
@@ -134,6 +154,11 @@ export function setupSocketHandlers(io) {
     socket.on('sos:status-update', async ({ emergencyId, status, note }) => {
       try {
         const updated = await EmergencyService.updateStatus(emergencyId, status, note);
+        io.to(`emergency:${emergencyId}`).emit('sos:status-update', {
+          emergencyId,
+          status: updated.status,
+          message: note || `Emergency status is now ${status}.`
+        });
         io.emit('sos:status-update', {
           emergencyId,
           status: updated.status,

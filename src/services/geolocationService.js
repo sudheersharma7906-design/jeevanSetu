@@ -1,4 +1,5 @@
 // src/services/geolocationService.js
+import { getApiUrl } from '../config/api';
 
 /**
  * Standard default fallback coordinates (Sitapur Rural Health Post, Uttar Pradesh)
@@ -56,9 +57,13 @@ export class GeolocationService {
           });
         },
         (error) => {
-          console.warn('[GEOLOCATION ERROR]', error.message, 'Falling back to default rural coordinates.');
+          console.warn('[GEOLOCATION ERROR]', error.message, 'Location permission or GPS signal required.');
           resolve({
-            ...DEFAULT_RURAL_COORDS,
+            latitude: null,
+            longitude: null,
+            accuracy: null,
+            address: 'GPS Permission Required / Disabled',
+            isFallback: true,
             errorMessage: error.message
           });
         },
@@ -180,9 +185,15 @@ export class GeolocationService {
    */
   static async sendLocationToServer(emergencyId, coords) {
     try {
-      const response = await fetch('/api/emergency/location', {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('jivansetu_token') : null;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(getApiUrl('/api/emergency/location'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           emergencyId,
           latitude: coords.latitude || coords.lat,

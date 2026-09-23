@@ -79,6 +79,8 @@ export class EmergencyService {
             name: r.name,
             phone: r.phone,
             clinicName: r.clinicName || 'Rural Clinic',
+            latitude: rLat,
+            longitude: rLng,
             distanceKm: parseFloat(calculateHaversineDistance(lat, lon, rLat, rLng).toFixed(1))
           };
         });
@@ -97,7 +99,9 @@ export class EmergencyService {
           name: closestRmp.name,
           phone: closestRmp.phone,
           distanceKm: closestRmp.distanceKm,
-          clinicName: closestRmp.clinicName
+          clinicName: closestRmp.clinicName,
+          latitude: closestRmp.latitude || 27.5750,
+          longitude: closestRmp.longitude || 80.6950
         }
       : null;
 
@@ -543,18 +547,22 @@ export class EmergencyService {
       }
     } catch (e) {}
 
-    // Emit live Socket update to RMP/Emergency Dispatchers
+    // Emit live Socket update to emergency-specific room
     if (this.socketEmitter) {
-      this.socketEmitter('sos:location-update', {
-        emergencyId,
-        latitude: lat,
-        longitude: lon,
-        accuracy,
-        address: address || `GPS (${lat.toFixed(4)}, ${lon.toFixed(4)})`,
-        googleMapsUrl,
-        googleMapsDirUrl,
-        timestamp: new Date().toISOString()
-      });
+      this.socketEmitter(
+        'sos:location-update',
+        {
+          emergencyId,
+          latitude: lat,
+          longitude: lon,
+          accuracy,
+          address: address || `GPS (${lat.toFixed(4)}, ${lon.toFixed(4)})`,
+          googleMapsUrl,
+          googleMapsDirUrl,
+          timestamp: new Date().toISOString()
+        },
+        `emergency:${emergencyId}`
+      );
     }
 
     return updatedEmergency || {

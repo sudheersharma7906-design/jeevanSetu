@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useEmergency } from '../context/EmergencyContext';
 import { MapPin } from '../components/emergency/MapPin';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { socket } from '../services/socket';
 import {
   AlertOctagon,
   Phone,
@@ -13,14 +14,45 @@ import {
   ShieldAlert,
   User,
   Activity,
-  Ambulance
+  Ambulance,
+  ExternalLink
 } from 'lucide-react';
 
-export const RmpEmergencyScreen = ({ alert, onBack }) => {
+export const RmpEmergencyScreen = ({ alert: initialAlert, onBack }) => {
   const { lang, t } = useLanguage();
   const { acceptEmergencyByRmp } = useEmergency();
+  const [currentAlert, setCurrentAlert] = useState(initialAlert);
 
-  if (!alert) {
+  useEffect(() => {
+    setCurrentAlert(initialAlert);
+  }, [initialAlert]);
+
+  // Listen for real-time live location updates from patient device
+  useEffect(() => {
+    if (!currentAlert?.id) return;
+
+    socket.emit('join-emergency', { emergencyId: currentAlert.id });
+
+    const handleLocationUpdate = (data) => {
+      if (data && data.emergencyId === currentAlert.id && data.latitude && data.longitude) {
+        setCurrentAlert(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            coordinates: { lat: data.latitude, lng: data.longitude },
+            accuracy: data.accuracy || prev.accuracy
+          };
+        });
+      }
+    };
+
+    socket.on('sos:location-update', handleLocationUpdate);
+    return () => {
+      socket.off('sos:location-update', handleLocationUpdate);
+    };
+  }, [currentAlert?.id]);
+
+  if (!currentAlert) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
         <AlertOctagon size={48} color="var(--slate-300)" style={{ margin: '0 auto 1rem' }} />
@@ -32,7 +64,20 @@ export const RmpEmergencyScreen = ({ alert, onBack }) => {
     );
   }
 
-  const isAccepted = alert.status === 'ACCEPTED_BY_RMP';
+  const isAccepted = currentAlert.status === 'ACCEPTED_BY_RMP' || currentAlert.status === 'ACCEPTED';
+
+  // Construct Google Maps Turn-by-Turn Navigation URL
+  const destinationLat = currentAlert.coordinates?.lat || 27.5644;
+  const destinationLng = currentAlert.coordinates?.lng || 80.6829;
+  const googleMapsNavUrl = `https://www.google.com/maps/dir/?api=1&destination=${destinationLat},${destinationLng}&travelmode=driving`;
+
+  const handleStartNavigation = () => {
+    window.open(googleMapsNavUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const rmpCoords = currentAlert.matchedRmp?.latitude
+    ? { lat: currentAlert.matchedRmp.latitude, lng: currentAlert.matchedRmp.longitude }
+    : { lat: 27.5750, lng: 80.6950 };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -48,7 +93,7 @@ export const RmpEmergencyScreen = ({ alert, onBack }) => {
               {lang === 'hi' ? '🚨 आपातकालीन रिस्पांडर कमांड' : '🚨 Emergency Responder Dispatch Screen'}
             </h2>
             <span style={{ fontSize: '0.8rem', color: 'var(--slate-500)' }}>
-              Alert ID: {alert.id} • Triggered: {new Date(alert.timestamp).toLocaleTimeString()}
+              Alert ID: {currentAlert.id} • Triggered: {new Date(currentAlert.timestamp).toLocaleTimeString()}
             </span>
           </div>
         </div>
@@ -56,7 +101,7 @@ export const RmpEmergencyScreen = ({ alert, onBack }) => {
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           {!isAccepted ? (
             <button
-              onClick={() => acceptEmergencyByRmp(alert.id)}
+              onClick={() => acceptEmergencyByRmp(currentAlert.id)}
               className="btn btn-emergency btn-lg"
               style={{ fontWeight: 800 }}
             >
@@ -65,12 +110,12 @@ export const RmpEmergencyScreen = ({ alert, onBack }) => {
             </button>
           ) : (
             <button
-              onClick={() => alert(lang === 'hi' ? 'नेविगेशन शुरू किया गया।' : 'GPS Turn-by-Turn Navigation Started.')}
+              onClick={handleStartNavigation}
               className="btn btn-primary btn-lg"
-              style={{ fontWeight: 800 }}
+              style={{ fontWeight: 800, background: 'linear-gradient(135deg, #4285F4, #1a73e8)', border: 'none' }}
             >
-              <Navigation size={20} />
-              {lang === 'hi' ? 'टर्न-बाय-टर्न नेविगेशन' : 'Turn-by-Turn GPS Navigation'}
+              <ExternalLink size={20} />
+              {lang === 'hi' ? 'गूगल मैप्स में टर्न-बाय-टर्न नेविगेशन' : 'Open Google Maps Navigation'}
             </button>
           )}
         </div>
@@ -88,10 +133,10 @@ export const RmpEmergencyScreen = ({ alert, onBack }) => {
           </div>
 
           <MapPin
-            patientName={alert.patientName}
-            patientCoords={alert.coordinates}
-            distance="2.4 km"
-            eta="6-8 mins by Motorcycle/Jeep"
+            patientName={currentAlert.patientName}
+            patientCoords={currentAlert.coordinates}
+            rmpCoords={rmpCoords}
+            distance={currentAlert.matchedRmp?.distanceKm ? `${currentAlert.matchedRmp.distanceKm} km` : null}
             height="420px"
           />
 
