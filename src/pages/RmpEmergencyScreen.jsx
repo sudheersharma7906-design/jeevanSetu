@@ -67,17 +67,19 @@ export const RmpEmergencyScreen = ({ alert: initialAlert, onBack }) => {
   const isAccepted = currentAlert.status === 'ACCEPTED_BY_RMP' || currentAlert.status === 'ACCEPTED';
 
   // Construct Google Maps Turn-by-Turn Navigation URL
-  const destinationLat = currentAlert.coordinates?.lat || 27.5644;
-  const destinationLng = currentAlert.coordinates?.lng || 80.6829;
-  const googleMapsNavUrl = `https://www.google.com/maps/dir/?api=1&destination=${destinationLat},${destinationLng}&travelmode=driving`;
+  const destinationLat = currentAlert.coordinates?.lat || currentAlert.latitude || null;
+  const destinationLng = currentAlert.coordinates?.lng || currentAlert.longitude || null;
+  const googleMapsNavUrl = (destinationLat && destinationLng)
+    ? `https://www.google.com/maps/dir/?api=1&destination=${destinationLat},${destinationLng}&travelmode=driving`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(currentAlert.location || 'Emergency Location')}`;
 
   const handleStartNavigation = () => {
     window.open(googleMapsNavUrl, '_blank', 'noopener,noreferrer');
   };
 
-  const rmpCoords = currentAlert.matchedRmp?.latitude
+  const rmpCoords = (currentAlert.matchedRmp?.latitude && currentAlert.matchedRmp?.longitude)
     ? { lat: currentAlert.matchedRmp.latitude, lng: currentAlert.matchedRmp.longitude }
-    : { lat: 27.5750, lng: 80.6950 };
+    : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -150,12 +152,12 @@ export const RmpEmergencyScreen = ({ alert: initialAlert, onBack }) => {
               {lang === 'hi' ? 'मरीज़ को कॉल करें' : 'Call Patient Directly'}
             </a>
             <button
-              onClick={() => alert(lang === 'hi' ? '108 आपातकालीन एम्बुलेंस को अलर्ट भेजा गया।' : '108 Ambulance Dispatch Alert Broadcasted.')}
+              onClick={() => alert(lang === 'hi' ? '[सिम्युलेटेड डेमो] 108 आपातकालीन एम्बुलेंस सेवा को अलर्ट भेजा गया।' : '[Demo Simulation] 108 Emergency Ambulance Dispatch Alert Triggered.')}
               className="btn btn-outline btn-md"
               style={{ flex: 1, borderColor: 'var(--emergency-500)', color: 'var(--emergency-700)' }}
             >
               <Ambulance size={18} />
-              {lang === 'hi' ? '108 एम्बुलेंस बुलाएं' : 'Dispatch 108 Ambulance'}
+              {lang === 'hi' ? '[डेमो] 108 एम्बुलेंस बुलाएं' : 'Demo: Dispatch 108 Ambulance'}
             </button>
           </div>
         </div>

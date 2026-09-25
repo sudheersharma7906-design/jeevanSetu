@@ -151,26 +151,31 @@ export const EmergencyProvider = ({ children }) => {
     soundManager.playEmergencySiren();
 
     // Acquire high-accuracy live GPS position via Browser Geolocation API
+    // Fall back to registered user profile location if live GPS is denied/unavailable. Never dispatch fake coordinates!
+    const userLat = user?.location?.coordinates?.[1] || user?.location?.latitude || null;
+    const userLng = user?.location?.coordinates?.[0] || user?.location?.longitude || null;
+    const userAddr = user?.location?.address || (user?.village ? `${user.village}${user.district ? `, ${user.district}` : ''}` : '');
+
     let geo = {
-      latitude: details.coordinates?.lat || 27.5644,
-      longitude: details.coordinates?.lng || 80.6829,
-      address: details.location || 'Rural Emergency Location',
+      latitude: details.coordinates?.lat || userLat,
+      longitude: details.coordinates?.lng || userLng,
+      address: details.location || userAddr || 'Location Unavailable (Please Enable GPS Permissions)',
       isFallback: false
     };
 
     try {
       const liveGeo = await GeolocationService.getCurrentPosition({ timeout: 6000 });
-      if (liveGeo && liveGeo.latitude) {
+      if (liveGeo && liveGeo.latitude && liveGeo.longitude) {
         geo = {
           latitude: details.coordinates?.lat || liveGeo.latitude,
           longitude: details.coordinates?.lng || liveGeo.longitude,
-          address: details.location || liveGeo.address || 'Rural Emergency Location',
+          address: details.location || liveGeo.address || 'Live GPS Emergency Location',
           accuracy: liveGeo.accuracy,
-          isFallback: liveGeo.isFallback || false
+          isFallback: false
         };
       }
     } catch (geoErr) {
-      console.warn('[EMERGENCY CONTEXT] Geolocation fallback used:', geoErr.message);
+      console.warn('[EMERGENCY CONTEXT] Geolocation notice:', geoErr.message);
     }
 
     const patientId = user?.id || user?.patientId || details.patientId || 'anonymous';
@@ -193,7 +198,8 @@ export const EmergencyProvider = ({ children }) => {
       locationPrivacy: {
         capturedOnExplicitTrigger: true,
         privacyConsent: 'EXPLICIT_EMERGENCY_ONLY',
-        continuousTracking: true,
+        activeEmergencyTracking: true,
+        passiveBackgroundTracking: false,
         gpsTimestamp: new Date().toISOString()
       }
     };
@@ -291,9 +297,13 @@ export const EmergencyProvider = ({ children }) => {
       });
 
       try {
+        const token = localStorage.getItem('jivansetu_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         await fetch(getApiUrl(`/api/emergency/${alertId}/status`), {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ status: 'RESOLVED', note: 'Emergency resolved by user' })
         });
       } catch (err) {
@@ -303,7 +313,13 @@ export const EmergencyProvider = ({ children }) => {
   };
 
   // RMP accepts emergency
-  const acceptEmergencyByRmp = async (alertId, rmpId = 'usr-rmp-001') => {
+  const acceptEmergencyByRmp = async (alertId, rmpIdOverride = null) => {
+    const rmpId = rmpIdOverride || user?.id || user?.rmpId;
+    if (!rmpId) {
+      console.warn('[EMERGENCY CONTEXT] Cannot accept emergency: RMP user ID is missing.');
+      throw new Error('RMP user identity is required to accept emergency');
+    }
+
     setEmergencyList(prev =>
       prev.map(e => (e.id === alertId ? { ...e, status: 'ACCEPTED_BY_RMP', rmpEnRoute: true } : e))
     );
@@ -315,9 +331,13 @@ export const EmergencyProvider = ({ children }) => {
     });
 
     try {
+      const token = localStorage.getItem('jivansetu_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       await fetch(getApiUrl(`/api/emergency/${alertId}/accept`), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ rmpId })
       });
     } catch (err) {

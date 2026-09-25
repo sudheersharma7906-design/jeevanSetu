@@ -114,17 +114,17 @@ export const PatientDashboard = () => {
                 ABHA: {profile.abhaId || user?.abhaId || 'ABHA-9821-4451'}
               </span>
               <span className="badge" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>
-                Blood: <b>{profile.bloodGroup || user?.bloodGroup || 'B+'}</b>
+                Blood: <b>{profile.bloodGroup || user?.bloodGroup || 'N/A'}</b>
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', fontSize: '0.85rem', color: 'var(--slate-600)', marginTop: '4px', flexWrap: 'wrap' }}>
-              <span><b>{profile.age || user?.age || 54} Yrs</b>, {profile.gender || user?.gender || 'Male'}</span>
+              <span><b>{profile.age || user?.age || '--'} Yrs</b>, {profile.gender || user?.gender || 'N/A'}</span>
               <span>•</span>
-              <span>Phone: <b>+91 {profile.phone || user?.phone || '9876543210'}</b></span>
+              <span>Phone: <b>+91 {profile.phone || user?.phone || 'N/A'}</b></span>
               <span>•</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                 <PinIcon size={14} color="var(--primary-700)" />
-                {profile.village || (isHindi && user?.villageHi ? user.villageHi : user?.village) || 'Wada Rural, Palghar'}
+                {profile.village || (isHindi && user?.villageHi ? user.villageHi : user?.village) || 'Location Not Set'}
               </span>
             </div>
           </div>
@@ -167,6 +167,8 @@ export const PatientDashboard = () => {
               📍 {isHindi ? 'लाइव जीपीएस टेलीमेट्री व रिस्पांडर रूट' : 'Live GPS Telemetry & Responder Route'}
             </h4>
             <MapPin
+              patientCoords={activeAlert?.coordinates ? { lat: activeAlert.coordinates.lat, lng: activeAlert.coordinates.lng } : null}
+              rmpCoords={activeAlert?.matchedRmp?.coordinates ? { lat: activeAlert.matchedRmp.coordinates.lat, lng: activeAlert.matchedRmp.coordinates.lng } : null}
               patientName={profile.name || user?.name}
               distance="2.4 km away"
               eta="Est. Arrival: 6 mins"

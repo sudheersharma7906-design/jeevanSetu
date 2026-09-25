@@ -120,11 +120,10 @@ export const LoginScreen = () => {
     const res = await requestOtp(clean);
     if (res.success) {
       setOtpSent(true);
-      setSentOtpCode(res.otp || '');
       setSuccessMsg(
         isHindi
-          ? `📲 +91 ${clean} पर ६-अंकों का ओटीपी भेजा गया है।${res.otp ? ` (परीक्षण कोड: ${res.otp})` : ''}`
-          : `📲 Verification OTP sent to +91 ${clean}.${res.otp ? ` (Test OTP: ${res.otp})` : ''}`
+          ? `📲 +91 ${clean} पर ६-अंकों का ओटीपी भेजा गया है।`
+          : `📲 Verification OTP sent to +91 ${clean}.`
       );
     } else {
       setErrorMsg(res.message || (isHindi ? 'ओटीपी भेजने में विफल। कृपया पुनः प्रयास करें।' : 'Failed to send OTP. Please check the number.'));
@@ -632,46 +631,15 @@ export const LoginScreen = () => {
           {/* ======================================================== */}
           {authMode === 'signup' && (
             <form onSubmit={handleSignupSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {/* Role Selection */}
-              <div>
-                <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--slate-600)', marginBottom: '0.35rem' }}>
-                  {isHindi ? 'आप किस रूप में पंजीकरण कर रहे हैं?' : 'Registering As:'}
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.45rem' }}>
-                  {[
-                    { id: 'patient', label: 'Patient (मरीज़)', icon: UserCheck },
-                    { id: 'rmp', label: 'RMP (ग्रामीण चिकित्सक)', icon: Activity },
-                    { id: 'doctor', label: 'Doctor (डॉक्टर)', icon: Stethoscope },
-                    { id: 'admin', label: 'Admin (प्रशासक)', icon: Hospital }
-                  ].map((r) => {
-                    const isSel = signupRole === r.id;
-                    const Icon = r.icon;
-                    return (
-                      <button
-                        type="button"
-                        key={r.id}
-                        onClick={() => setSignupRole(r.id)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.4rem',
-                          padding: '0.5rem 0.65rem',
-                          borderRadius: 'var(--radius-md)',
-                          border: isSel ? '2px solid var(--primary-600)' : '1px solid var(--slate-300)',
-                          background: isSel ? 'var(--primary-50)' : 'white',
-                          color: isSel ? 'var(--primary-900)' : 'var(--slate-700)',
-                          fontWeight: isSel ? 800 : 500,
-                          fontSize: '0.78rem',
-                          cursor: 'pointer',
-                          textAlign: 'left'
-                        }}
-                      >
-                        <Icon size={16} color={isSel ? 'var(--primary-700)' : 'var(--slate-500)'} />
-                        <span>{r.label.split(' ')[0]}</span>
-                      </button>
-                    );
-                  })}
+              {/* Role Selection (Locked to Patient for Public Signup) */}
+              <div style={{ background: 'var(--primary-50)', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--primary-200)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-900)', fontSize: '0.82rem', fontWeight: 600 }}>
+                  <UserCheck size={18} style={{ color: 'var(--primary-700)' }} />
+                  <span>{isHindi ? 'सार्वजनिक पंजीकरण: केवल मरीज़ (Patient)' : 'Public Registration: Patient Account'}</span>
                 </div>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.73rem', color: 'var(--slate-600)', lineHeight: 1.3 }}>
+                  {isHindi ? 'RMP, डॉक्टर और एडमिन खातों के लिए व्यवस्थापक अनुमति की आवश्यकता होती है।' : 'Healthcare provider (RMP/Doctor) & Admin accounts require admin approval.'}
+                </p>
               </div>
 
               {/* Full Name */}

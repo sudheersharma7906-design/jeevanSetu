@@ -10,18 +10,27 @@
 // 2. Localhost development fallback (http://localhost:5000)
 // 3. Current window origin for reverse-proxied / same-origin deployments
 const getBaseUrl = () => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL.replace(/\/+$/, '');
+  const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/+$/, '');
   }
-  if (import.meta.env.VITE_BACKEND_URL) {
-    return import.meta.env.VITE_BACKEND_URL.replace(/\/+$/, '');
-  }
+
   if (typeof window !== 'undefined') {
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocalhost) {
       return 'http://localhost:5000';
+    }
+
+    if (import.meta.env.PROD) {
+      console.warn(
+        `[JivanSetu API Config Warning]: VITE_API_URL environment variable is missing in production build. ` +
+        `API requests will fall back to same-origin (${window.location.origin}). ` +
+        `If your backend is hosted on a separate domain (e.g. https://jeevansetu-api.onrender.com), set VITE_API_URL in your hosting environment settings.`
+      );
     }
     return window.location.origin;
   }
+
   return 'http://localhost:5000';
 };
 

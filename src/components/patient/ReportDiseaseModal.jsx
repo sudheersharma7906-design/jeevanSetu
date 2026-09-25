@@ -57,8 +57,15 @@ export const ReportDiseaseModal = ({ isOpen, onClose, currentPatient, onCaseSubm
 
     setIsSubmitting(true);
 
+    const targetPatientId = profile.id || currentPatient?.id || user?.id || user?.patientId;
+    if (!targetPatientId) {
+      alert('Patient ID is required to submit a disease report.');
+      setIsSubmitting(false);
+      return;
+    }
+
     const createdCase = reportDiseaseIssue({
-      patientId: profile.id || currentPatient?.id || 'pat-101',
+      patientId: targetPatientId,
       patientName: profile.name || currentPatient?.name,
       phone: profile.phone || currentPatient?.phone,
       age: profile.age || currentPatient?.age,

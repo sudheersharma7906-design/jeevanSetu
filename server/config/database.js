@@ -55,6 +55,10 @@ export async function disconnectDB() {
   }
 }
 
+export function isMongoConnected() {
+  return mongoose.connection.readyState === 1;
+}
+
 /**
  * Real-time health diagnostic for monitoring uptime and DB health
  */

@@ -9,6 +9,7 @@ import {
 } from '../../config/constants.js';
 import { SmsService } from '../notification/sms.service.js';
 import { EmergencyRequest, User } from '../../models/index.js';
+import { isMongoConnected } from '../../config/database.js';
 
 export class EmergencyService {
   static activeTimers = new Map(); // emergencyId -> NodeJS.Timeout
@@ -142,26 +143,29 @@ export class EmergencyService {
       console.warn('[EMERGENCY] MongoDB create notice (falling back to memory):', mongoErr.message);
     }
 
-    // 3. Sync to memory DB
-    const memoryEmergency = db.createEmergency({
-      id: newEmergency?.id || `sos-${Date.now()}`,
-      patientId,
-      patientName,
-      patientPhone,
-      triggerType,
-      voiceTranscript: voiceTranscript || (triggerType === 'VOICE' ? 'Voice SOS Alert' : ''),
-      symptomsReported: symptoms,
-      location: {
-        latitude: lat,
-        longitude: lon,
-        address: address || 'Rural Location'
-      },
-      matchedRmp,
-      status: EMERGENCY_STATUS.NOTIFIED,
-      tier: 1,
-      timeoutSeconds: Math.floor(EMERGENCY_TIMEOUT_MS / 1000),
-      initialNote: `SOS triggered via ${triggerType}. Nearest RMP: ${closestRmp ? `${closestRmp.name} (${closestRmp.distanceKm} km)` : 'None in direct 30km radius - Broadcast to District Hub'}`
-    });
+    // 3. Fallback to memory DB if MongoDB is disconnected / test mode
+    let memoryEmergency = null;
+    if (!newEmergency || !isMongoConnected()) {
+      memoryEmergency = db.createEmergency({
+        id: newEmergency?.id || `sos-${Date.now()}`,
+        patientId,
+        patientName,
+        patientPhone,
+        triggerType,
+        voiceTranscript: voiceTranscript || (triggerType === 'VOICE' ? 'Voice SOS Alert' : ''),
+        symptomsReported: symptoms,
+        location: {
+          latitude: lat,
+          longitude: lon,
+          address: address || 'Rural Location'
+        },
+        matchedRmp,
+        status: EMERGENCY_STATUS.NOTIFIED,
+        tier: 1,
+        timeoutSeconds: Math.floor(EMERGENCY_TIMEOUT_MS / 1000),
+        initialNote: `SOS triggered via ${triggerType}. Nearest RMP: ${closestRmp ? `${closestRmp.name} (${closestRmp.distanceKm} km)` : 'None in direct 30km radius - Broadcast to District Hub'}`
+      });
+    }
 
     const activeEmergency = newEmergency || memoryEmergency;
 

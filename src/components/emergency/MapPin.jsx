@@ -4,10 +4,10 @@ import { useLanguage } from '../../context/LanguageContext';
 import { GeolocationService } from '../../services/geolocationService';
 
 export const MapPin = ({
-  patientCoords = { lat: 27.5644, lng: 80.6829 },
-  rmpCoords = { lat: 27.5750, lng: 80.6950 },
-  patientName = 'Rameshwar Sharma',
-  rmpName = 'Dr. Anand Verma (RMP)',
+  patientCoords = null,
+  rmpCoords = null,
+  patientName = 'Emergency Patient',
+  rmpName = 'Healthcare Responder',
   distance: customDistance = null,
   eta: customEta = null,
   height = '340px',
@@ -23,12 +23,16 @@ export const MapPin = ({
   const [isLocating, setIsLocating] = useState(false);
   const [locationStatus, setLocationStatus] = useState('');
 
-  const activePatientCoords = liveLocation?.coords || patientCoords;
+  const defaultPatientCoords = { lat: 19.6542, lng: 73.1389 };
+  const defaultRmpCoords = { lat: 19.6580, lng: 73.1420 };
+
+  const activePatientCoords = liveLocation?.coords || patientCoords || defaultPatientCoords;
+  const activeRmpCoords = rmpCoords || defaultRmpCoords;
 
   // Auto calculate dynamic distance & ETA if not manually provided
   const computedDistance = GeolocationService.calculateDistanceKm(
-    rmpCoords.lat,
-    rmpCoords.lng,
+    activeRmpCoords.lat,
+    activeRmpCoords.lng,
     activePatientCoords.lat,
     activePatientCoords.lng
   );
@@ -36,7 +40,7 @@ export const MapPin = ({
   const eta = customEta || GeolocationService.estimateEtaMinutes(computedDistance);
 
   // Google Maps URLs
-  const googleMapsNavUrl = `https://www.google.com/maps/dir/?api=1&origin=${rmpCoords.lat},${rmpCoords.lng}&destination=${activePatientCoords.lat},${activePatientCoords.lng}&travelmode=driving`;
+  const googleMapsNavUrl = `https://www.google.com/maps/dir/?api=1&origin=${activeRmpCoords.lat},${activeRmpCoords.lng}&destination=${activePatientCoords.lat},${activePatientCoords.lng}&travelmode=driving`;
   const googleMapsPinUrl = `https://www.google.com/maps/search/?api=1&query=${activePatientCoords.lat},${activePatientCoords.lng}`;
 
   const handleShareRealLocation = async () => {
@@ -94,8 +98,8 @@ export const MapPin = ({
           mapInstanceRef.current = null;
         }
 
-        const centerLat = (activePatientCoords.lat + rmpCoords.lat) / 2;
-        const centerLng = (activePatientCoords.lng + rmpCoords.lng) / 2;
+        const centerLat = (activePatientCoords.lat + activeRmpCoords.lat) / 2;
+        const centerLng = (activePatientCoords.lng + activeRmpCoords.lng) / 2;
 
         const map = L.map(mapContainerRef.current, {
           center: [centerLat, centerLng],
@@ -150,7 +154,7 @@ export const MapPin = ({
         });
 
         // Add 3km Emergency Coverage Radius circle around patient
-        L.circle([patientCoords.lat, patientCoords.lng], {
+        L.circle([activePatientCoords.lat, activePatientCoords.lng], {
           radius: 2400,
           color: '#ef4444',
           fillColor: '#ef4444',
@@ -160,18 +164,18 @@ export const MapPin = ({
         }).addTo(map);
 
         // Markers
-        L.marker([patientCoords.lat, patientCoords.lng], { icon: patientIcon })
+        L.marker([activePatientCoords.lat, activePatientCoords.lng], { icon: patientIcon })
           .addTo(map)
           .bindPopup(`
             <div style="font-family:sans-serif; padding:4px;">
               <b style="color:#dc2626;">🚨 Emergency Patient</b><br/>
               <b>${patientName}</b><br/>
-              <span style="font-size:11px; color:#64748b;">GPS: ${patientCoords.lat.toFixed(4)}, ${patientCoords.lng.toFixed(4)}</span>
+              <span style="font-size:11px; color:#64748b;">GPS: ${activePatientCoords.lat.toFixed(4)}, ${activePatientCoords.lng.toFixed(4)}</span>
             </div>
           `)
           .openPopup();
 
-        L.marker([rmpCoords.lat, rmpCoords.lng], { icon: rmpIcon })
+        L.marker([activeRmpCoords.lat, activeRmpCoords.lng], { icon: rmpIcon })
           .addTo(map)
           .bindPopup(`
             <div style="font-family:sans-serif; padding:4px;">
@@ -186,9 +190,9 @@ export const MapPin = ({
         const midLng = centerLng - 0.002;
         L.polyline(
           [
-            [rmpCoords.lat, rmpCoords.lng],
+            [activeRmpCoords.lat, activeRmpCoords.lng],
             [midLat, midLng],
-            [patientCoords.lat, patientCoords.lng]
+            [activePatientCoords.lat, activePatientCoords.lng]
           ],
           {
             color: '#0d9488',
@@ -201,8 +205,8 @@ export const MapPin = ({
         // Auto fit bounds to enclose both markers comfortably
         map.fitBounds(
           [
-            [patientCoords.lat, patientCoords.lng],
-            [rmpCoords.lat, rmpCoords.lng]
+            [activePatientCoords.lat, activePatientCoords.lng],
+            [activeRmpCoords.lat, activeRmpCoords.lng]
           ],
           { padding: [45, 45], maxZoom: 15 }
         );

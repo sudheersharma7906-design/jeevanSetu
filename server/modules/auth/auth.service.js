@@ -13,6 +13,15 @@ import {
 } from '../../config/constants.js';
 import { SmsService } from '../notification/sms.service.js';
 
+export function sanitizeUser(user) {
+  if (!user) return null;
+  const obj = typeof user.toObject === 'function' ? user.toObject() : { ...user };
+  delete obj.password;
+  delete obj.passwordHash;
+  delete obj.__v;
+  return obj;
+}
+
 export class AuthService {
   /**
    * Password-based Authentication for all user roles (Patient, RMP, Doctor, Admin).
@@ -57,17 +66,15 @@ export class AuthService {
       throw new Error('Invalid role for this account. Account role mismatch.');
     }
 
-    // Validate password strictly with bcrypt comparison (Section 6 & 7 of PRD)
+    // Validate password strictly with bcrypt comparison
     let isMatch = false;
 
-    if ((cleanPhone === '9876543210' || cleanPhone === '9876543301' || cleanPhone === '9876543401' || cleanPhone === '9876543999') && (password === 'password123' || password === 'DemoPass@123')) {
-      isMatch = true;
-    } else if (user.passwordHash) {
-      isMatch = await bcrypt.compare(password, user.passwordHash) || password === user.password || (password === 'password123' && cleanPhone.startsWith('9876543'));
-    } else if (typeof user.comparePassword === 'function') {
-      isMatch = await user.comparePassword(password);
-    } else if (user.password) {
-      isMatch = await bcrypt.compare(password, bcrypt.hashSync(user.password, 10)) || password === user.password;
+    if (user.passwordHash) {
+      isMatch = await bcrypt.compare(password, user.passwordHash);
+    } else if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
+      if (user.password) {
+        isMatch = password === user.password;
+      }
     }
 
     if (!isMatch) {
@@ -94,7 +101,7 @@ export class AuthService {
 
     console.log(`[AUTH] Successful password login for ${cleanPhone} [${userRole}]`);
 
-    const userPayload = isMongoUser ? user.toObject() : user;
+    const userPayload = sanitizeUser(isMongoUser ? user.toObject() : user);
 
     return {
       message: 'Logged in successfully.',
@@ -144,11 +151,17 @@ export class AuthService {
       console.warn('[AUTH SIGNUP] Mongo user lookup notice:', err.message);
     }
 
-    const effectiveRole = role ? role.toLowerCase() : ROLES.PATIENT;
+    const requestedRole = (role || ROLES.PATIENT).toLowerCase();
+    if (requestedRole !== ROLES.PATIENT) {
+      throw new Error('Public registration is restricted to Patient accounts only. RMP, Doctor, and Admin accounts require admin approval or invitation.');
+    }
+    const effectiveRole = ROLES.PATIENT;
+
+    const hashedPassword = await bcrypt.hash(password.trim(), 10);
 
     const userPayload = {
       phone: cleanPhone,
-      password: password.trim(),
+      passwordHash: hashedPassword,
       role: effectiveRole,
       name: name.trim(),
       nameHi: userData.nameHi || name.trim(),
@@ -214,7 +227,7 @@ export class AuthService {
 
     return {
       message: 'Account created successfully! Please sign in with your mobile number and password.',
-      user: registeredUser
+      user: sanitizeUser(registeredUser)
     };
   }
 
@@ -234,8 +247,8 @@ export class AuthService {
       throw new Error(`Account temporarily locked due to excessive failed attempts. Please try again in ${remainingSec} seconds.`);
     }
 
-    // Development friendly / Seed accounts: fixed or random 6-digit OTP
-    const code = cleanPhone === '9876543210' || cleanPhone === '9876543301' || cleanPhone === '9876543401' || cleanPhone === '9876543999'
+    // Generate secure 6-digit OTP code (Fixed test code 123456 allowed ONLY in NODE_ENV=test)
+    const code = (process.env.NODE_ENV === 'test' && (cleanPhone === '9876543210' || cleanPhone === '9876543301' || cleanPhone === '9876543401' || cleanPhone === '9876543999'))
       ? '123456'
       : Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -271,7 +284,6 @@ export class AuthService {
     return {
       message: 'OTP sent successfully to mobile number.',
       phone: cleanPhone,
-      otp: code, // returned for test suites & developer validation
       expiresInSeconds: Math.floor(OTP_EXPIRY_MS / 1000)
     };
   }
@@ -295,33 +307,35 @@ export class AuthService {
     const storedOtp = db.getOtp(cleanPhone);
 
     if (!storedOtp) {
-      // Allow default test code 123456 for seeded accounts if OTP request step was bypassed
-      let existingUser = db.findUserByPhone(cleanPhone);
-      if (!existingUser) {
-        try {
-          existingUser = await User.findOne({ phone: cleanPhone });
-        } catch (e) {}
-      }
+      // In NODE_ENV=test, allow default test code 123456 for seeded accounts if OTP request step was bypassed
+      if (process.env.NODE_ENV === 'test' && otp.toString().trim() === '123456') {
+        let existingUser = db.findUserByPhone(cleanPhone);
+        if (!existingUser) {
+          try {
+            existingUser = await User.findOne({ phone: cleanPhone });
+          } catch (e) {}
+        }
 
-      if (existingUser && otp.toString().trim() === '123456') {
-        const token = jwt.sign(
-          {
-            id: existingUser.id || existingUser._id,
-            role: existingUser.role,
-            phone: existingUser.phone,
-            name: existingUser.name,
-            type: 'access',
-            jti: crypto.randomUUID()
-          },
-          JWT_SECRET,
-          { expiresIn: JWT_ACCESS_EXPIRES_IN }
-        );
-        return {
-          message: 'OTP verified successfully.',
-          token,
-          tokenExpiresIn: JWT_ACCESS_EXPIRES_IN,
-          user: existingUser
-        };
+        if (existingUser) {
+          const token = jwt.sign(
+            {
+              id: existingUser.id || existingUser._id,
+              role: existingUser.role,
+              phone: existingUser.phone,
+              name: existingUser.name,
+              type: 'access',
+              jti: crypto.randomUUID()
+            },
+            JWT_SECRET,
+            { expiresIn: JWT_ACCESS_EXPIRES_IN }
+          );
+          return {
+            message: 'OTP verified successfully.',
+            token,
+            tokenExpiresIn: JWT_ACCESS_EXPIRES_IN,
+            user: existingUser
+          };
+        }
       }
 
       // Record failed attempt for untracked brute-force requests
@@ -404,7 +418,7 @@ export class AuthService {
       message: 'OTP verified successfully.',
       token,
       tokenExpiresIn: JWT_ACCESS_EXPIRES_IN,
-      user
+      user: sanitizeUser(user)
     };
   }
 
@@ -464,7 +478,7 @@ export class AuthService {
         token: newToken,
         tokenExpiresIn: JWT_ACCESS_EXPIRES_IN,
         user: {
-          ...userPayload,
+          ...sanitizeUser(userPayload),
           id: userId,
           patientId: userId
         }
@@ -516,7 +530,7 @@ export class AuthService {
 
     return {
       valid: true,
-      user: userPayload,
+      user: sanitizeUser(userPayload),
       expiresAt: decoded.exp ? new Date(decoded.exp * 1000).toISOString() : null
     };
   }
@@ -537,7 +551,7 @@ export class AuthService {
     if (!user) {
       throw new Error('User not found.');
     }
-    return user.toObject ? user.toObject() : user;
+    return sanitizeUser(user);
   }
 
   /**
@@ -566,7 +580,8 @@ export class AuthService {
     }
 
     const storedOtp = db.getOtp(cleanPhone);
-    const isValidOtp = (storedOtp && storedOtp.code === otp.toString().trim()) || otp.toString().trim() === '123456';
+    const isTestEnv = process.env.NODE_ENV === 'test';
+    const isValidOtp = (storedOtp && storedOtp.code === otp.toString().trim()) || (isTestEnv && otp.toString().trim() === '123456');
     if (!isValidOtp) {
       throw new Error('Invalid or expired OTP code.');
     }

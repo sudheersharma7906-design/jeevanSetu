@@ -95,7 +95,7 @@ export const UpdatePatientDiagnosisModal = ({ isOpen, onClose, patientCase, onDi
       addedConditions.push(diagnosis.trim());
     }
 
-    const doctorDisplayName = user?.name || (role === 'doctor' ? 'Dr. Priya Sharma, MD' : 'Dr. (RMP) Anand Deshmukh');
+    const doctorDisplayName = user?.name || (role === 'doctor' ? 'Specialist Doctor' : 'On-Duty RMP');
     const doctorRegNumber = user?.regNo || user?.regNumber || user?.registrationNo || 'MCI-MH-44291';
     const doctorSpecialty = user?.specialty || (role === 'doctor' ? 'Specialist Tele-Consultant' : 'Rural Medical Practitioner');
 
@@ -169,7 +169,7 @@ export const UpdatePatientDiagnosisModal = ({ isOpen, onClose, patientCase, onDi
                   {patientCase.patientName} ({patientCase.age} Yrs, {patientCase.gender || 'Male'})
                 </h4>
                 <span style={{ fontSize: '0.78rem', color: 'var(--slate-500)' }}>
-                  Phone: +91 {patientCase.phone || patientProfile.phone || '9876543210'} • {patientProfile.village || 'Wada Rural'}
+                  Phone: +91 {patientCase.phone || patientProfile.phone || 'N/A'} • {patientProfile.village || 'N/A'}
                 </span>
               </div>
             </div>

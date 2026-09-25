@@ -44,7 +44,11 @@ export const IntegrationsHub = () => {
 
   const fetchLogs = async () => {
     try {
-      const res = await fetch(getApiUrl('/api/notifications/carrier/logs'));
+      const token = localStorage.getItem('jivansetu_token');
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(getApiUrl('/api/notifications/carrier/logs'), { headers });
       if (res.ok) {
         const data = await res.json();
         setDeliveryLogs(data.logs || []);
@@ -71,9 +75,13 @@ export const IntegrationsHub = () => {
       : getApiUrl('/api/notifications/sms/send');
 
     try {
+      const token = localStorage.getItem('jivansetu_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           to: testPhone,
           message: testMessage,
@@ -185,9 +193,9 @@ export const IntegrationsHub = () => {
             Protocol: <b>Browser Geolocation API</b> + <b>OSM Nominatim</b>
           </p>
           <div style={{ fontSize: '0.75rem', background: 'var(--slate-50)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--slate-200)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span>• Lat: <b>{geoData?.latitude?.toFixed(4) || '27.5644'}</b>, Lng: <b>{geoData?.longitude?.toFixed(4) || '80.6829'}</b></span>
-            <span>• Accuracy: ±{geoData?.accuracy || 10}m</span>
-            <span>• Address: {geoData?.address ? geoData.address.slice(0, 32) + '...' : 'Sitapur, UP'}</span>
+            <span>• Lat: <b>{geoData?.latitude ? geoData.latitude.toFixed(4) : 'N/A'}</b>, Lng: <b>{geoData?.longitude ? geoData.longitude.toFixed(4) : 'N/A'}</b></span>
+            <span>• Accuracy: {geoData?.accuracy ? `±${geoData.accuracy}m` : 'N/A'}</span>
+            <span>• Address: {geoData?.address ? (geoData.address.slice(0, 35) + (geoData.address.length > 35 ? '...' : '')) : 'GPS Signal / Location Permissions Required'}</span>
           </div>
         </div>
 

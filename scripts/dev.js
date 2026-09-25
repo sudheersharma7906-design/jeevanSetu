@@ -11,7 +11,7 @@ const server = spawn('node --watch server/index.js', {
   shell: true
 });
 
-// 2. Launch Vite Frontend Dev Server (port 5173 / 3000)
+// 2. Launch Vite Frontend Dev Server (port 5173)
 const client = spawn('npx vite', {
   stdio: 'inherit',
   shell: true

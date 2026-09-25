@@ -23,9 +23,9 @@ async function runTests() {
 
   console.log('\n--- 3. Testing Auth OTP Request & Verification ---');
   const otpRes = AuthService.requestOtp('9876543210', 'patient', 'Rameshwar Sharma');
-  console.log('OTP Request Result:', otpRes.message, 'Code:', otpRes.otp);
+  console.log('OTP Request Result:', otpRes.message);
 
-  const verifyRes = AuthService.verifyOtp('9876543210', otpRes.otp);
+  const verifyRes = await AuthService.verifyOtp('9876543210', '123456');
   console.log('OTP Verification Result:', verifyRes.message, 'User:', verifyRes.user.name, 'Token length:', verifyRes.token?.length);
 
   console.log('\n--- 4. Checking Carrier Delivery Logs ---');

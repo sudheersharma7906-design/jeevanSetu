@@ -54,7 +54,7 @@ export const ConsultRoom = ({ patient, onEndCall, onOpenPrescription }) => {
   const remoteVideoRef = useRef(null);
   const webrtcRef = useRef(null);
 
-  const roomId = `room-consult-${patient?.patientId || 'pat-101'}`;
+  const roomId = `room-consult-${patient?.patientId || patient?.id || 'active-session'}`;
 
   // Initialize WebRTC & Media Streams
   useEffect(() => {
@@ -259,16 +259,18 @@ export const ConsultRoom = ({ patient, onEndCall, onOpenPrescription }) => {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.4rem',
-                  background: 'rgba(16, 185, 129, 0.2)',
-                  border: '1px solid #10b981',
+                  background: remoteStreamAttached ? 'rgba(16, 185, 129, 0.2)' : 'rgba(234, 179, 8, 0.2)',
+                  border: `1px solid ${remoteStreamAttached ? '#10b981' : '#eab308'}`,
                   padding: '0.25rem 0.75rem',
                   borderRadius: '999px',
                   fontSize: '0.8rem',
-                  color: '#6ee7b7'
+                  color: remoteStreamAttached ? '#6ee7b7' : '#fde047'
                 }}
               >
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
-                {lang === 'hi' ? 'लाइव सुरक्षित WebRTC एचडी परामर्श' : 'Live Encrypted WebRTC HD Teleconsult'}
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: remoteStreamAttached ? '#10b981' : '#eab308' }} />
+                {remoteStreamAttached
+                  ? (lang === 'hi' ? 'लाइव WebRTC P2P वीडियो सक्रिय' : 'Live WebRTC P2P Video Active')
+                  : (lang === 'hi' ? 'WebRTC सिग्नैलिंग सक्रिय (डेमो / पीयर वीडियो प्रतीक्षारत)' : 'WebRTC Signaling Active (Demo / Waiting for Peer Video)')}
               </div>
             </div>
           )}

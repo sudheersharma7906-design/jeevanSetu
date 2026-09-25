@@ -5,10 +5,10 @@ import { getApiUrl } from '../config/api';
  * Standard default fallback coordinates (Sitapur Rural Health Post, Uttar Pradesh)
  */
 export const DEFAULT_RURAL_COORDS = {
-  latitude: 27.5644,
-  longitude: 80.6829,
-  accuracy: 10,
-  address: 'Rampur Kalan, Block Laharpur, Sitapur, Uttar Pradesh 261135',
+  latitude: null,
+  longitude: null,
+  accuracy: null,
+  address: 'Location Unavailable (Please Enable GPS Permissions)',
   isFallback: true
 };
 
@@ -23,11 +23,11 @@ export class GeolocationService {
   /**
    * Retrieve current high-accuracy GPS coordinates.
    * @param {Object} options Geolocation options
-   * @returns {Promise<{latitude: number, longitude: number, accuracy: number, address: string, isFallback: boolean}>}
+   * @returns {Promise<{latitude: number|null, longitude: number|null, accuracy: number|null, address: string, isFallback: boolean}>}
    */
   static async getCurrentPosition(options = {}) {
     if (!this.isSupported()) {
-      console.warn('[GEOLOCATION] Browser Geolocation API not supported. Using rural fallback coordinates.');
+      console.warn('[GEOLOCATION] Browser Geolocation API not supported.');
       return { ...DEFAULT_RURAL_COORDS };
     }
 
@@ -62,7 +62,7 @@ export class GeolocationService {
             latitude: null,
             longitude: null,
             accuracy: null,
-            address: 'GPS Permission Required / Disabled',
+            address: 'Location Unavailable (Please Enable GPS Permissions)',
             isFallback: true,
             errorMessage: error.message
           });

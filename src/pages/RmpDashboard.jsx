@@ -49,7 +49,7 @@ export const RmpDashboard = ({ onOpenEmergencyScreen }) => {
       ...result,
       patientName: 'Kishan Lal (Walk-in)',
       age: 48,
-      notes: 'Logged directly in field by RMP Dr. Anand Deshmukh.'
+      notes: 'Logged directly in field by RMP.'
     });
   };
 

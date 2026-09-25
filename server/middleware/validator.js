@@ -71,14 +71,18 @@ export function validateSignup(req, res, next) {
     invalidFields.push('password');
   }
 
-  if (role && !Object.values(ROLES).includes(role.toLowerCase())) {
-    invalidFields.push('role');
+  if (role && role.toLowerCase() !== ROLES.PATIENT) {
+    return validationError(
+      res,
+      'Public registration is restricted to Patient accounts only. RMP, Doctor, and Admin accounts require admin approval or invitation.',
+      ['role']
+    );
   }
 
   if (invalidFields.length > 0) {
     return validationError(
       res,
-      'Valid name, 10-digit mobile number, password (min 4 characters), and role are required.',
+      'Valid name, 10-digit mobile number, and password (min 4 characters) are required.',
       invalidFields
     );
   }

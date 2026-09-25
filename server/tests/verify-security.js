@@ -212,10 +212,10 @@ async function runSecurityTests() {
     });
 
     // Re-authenticate patient 1 for subsequent RBAC tests
-    const reAuth = await fetch(`${BASE_URL}/auth/otp/verify`, {
+    const reAuth = await fetch(`${BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: '9876543210', otp: '123456' })
+      body: JSON.stringify({ phone: '9876543210', password: 'DemoPass@123', role: 'patient' })
     });
     patient1Token = (await reAuth.json()).token;
 

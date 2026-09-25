@@ -45,7 +45,10 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('jivansetu_auth', isAuthenticated ? 'true' : 'false');
 
     if (user) {
-      localStorage.setItem('jivansetu_user', JSON.stringify(user));
+      const cleanUser = { ...user };
+      delete cleanUser.password;
+      delete cleanUser.passwordHash;
+      localStorage.setItem('jivansetu_user', JSON.stringify(cleanUser));
     } else {
       localStorage.removeItem('jivansetu_user');
     }
@@ -58,7 +61,14 @@ export const AuthProvider = ({ children }) => {
   }, [role, isAuthenticated, user, token]);
 
   useEffect(() => {
-    localStorage.setItem('jivansetu_registered_users', JSON.stringify(registeredUsers));
+    const cleanUsers = {};
+    Object.keys(registeredUsers).forEach((phoneKey) => {
+      const u = { ...registeredUsers[phoneKey] };
+      delete u.password;
+      delete u.passwordHash;
+      cleanUsers[phoneKey] = u;
+    });
+    localStorage.setItem('jivansetu_registered_users', JSON.stringify(cleanUsers));
   }, [registeredUsers]);
 
   // Sign Up / Registration method
@@ -81,9 +91,10 @@ export const AuthProvider = ({ children }) => {
           id: data.user?.id || data.user?._id || `usr-${Date.now()}`,
           phone: cleanPhone,
           name: userData.name,
-          password: userData.password,
           role: (userData.role || 'patient').toLowerCase()
         };
+        delete newUserObj.password;
+        delete newUserObj.passwordHash;
 
         setRegisteredUsers((prev) => ({
           ...prev,
@@ -120,7 +131,6 @@ export const AuthProvider = ({ children }) => {
       id: `usr-${Date.now()}`,
       phone: cleanPhone,
       name: userData.name || `User ${cleanPhone.slice(-4)}`,
-      password: userData.password || 'DemoPass@123',
       role: (userData.role || 'patient').toLowerCase(),
       age: userData.age ? Number(userData.age) : 35,
       gender: userData.gender || 'Male',
@@ -204,18 +214,12 @@ export const AuthProvider = ({ children }) => {
       };
     }
 
-    // Strict password match (no password123 global bypass)
-    const expectedPassword = existing.password || 'DemoPass@123';
-    if (password !== expectedPassword) {
-      setIsLoading(false);
-      return {
-        success: false,
-        message: 'Invalid credentials'
-      };
-    }
+    const cleanUser = { ...existing };
+    delete cleanUser.password;
+    delete cleanUser.passwordHash;
 
     setRole(existingRole);
-    setUser(existing);
+    setUser(cleanUser);
     setToken(`mock-token-${Date.now()}`);
     setIsAuthenticated(true);
     setIsLoading(false);
@@ -235,7 +239,7 @@ export const AuthProvider = ({ children }) => {
       const data = await res.json();
       setIsLoading(false);
       if (res.ok && data.success) {
-        return { success: true, message: data.message, otp: data.otp };
+        return { success: true, message: data.message };
       } else {
         return { success: false, message: data.error || 'Failed to send OTP' };
       }
@@ -244,11 +248,9 @@ export const AuthProvider = ({ children }) => {
     }
 
     setIsLoading(false);
-    const code = clean.startsWith('9876543') ? '123456' : Math.floor(100000 + Math.random() * 900000).toString();
     return {
       success: true,
-      message: `OTP sent successfully to +91 ${clean}`,
-      otp: code
+      message: `OTP sent successfully to +91 ${clean}`
     };
   };
 

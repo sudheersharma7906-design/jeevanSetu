@@ -1,16 +1,19 @@
 // server/modules/consult/consult.routes.js
 import { Router } from 'express';
 import { ConsultController } from './consult.controller.js';
-import { optionalAuth } from '../../middleware/auth.js';
+import { authenticateToken, requireRoles } from '../../middleware/auth.js';
 import { validateConsultEscalate } from '../../middleware/validator.js';
 
 const router = Router();
 
-router.post('/escalate', optionalAuth, validateConsultEscalate, ConsultController.escalate);
-router.get('/queue', optionalAuth, ConsultController.getQueue);
-router.get('/:id', optionalAuth, ConsultController.getById);
-router.put('/:id/status', optionalAuth, ConsultController.updateStatus);
-router.post('/:id/complete', optionalAuth, ConsultController.complete);
-router.post('/:id/prescribe', optionalAuth, ConsultController.prescribe);
+// Protect all consult endpoints with authentication
+router.use(authenticateToken);
+
+router.post('/escalate', requireRoles(['rmp', 'doctor', 'admin']), validateConsultEscalate, ConsultController.escalate);
+router.get('/queue', requireRoles(['doctor', 'admin']), ConsultController.getQueue);
+router.get('/:id', ConsultController.getById);
+router.put('/:id/status', requireRoles(['doctor', 'admin']), ConsultController.updateStatus);
+router.post('/:id/complete', requireRoles(['doctor', 'admin']), ConsultController.complete);
+router.post('/:id/prescribe', requireRoles(['doctor', 'admin']), ConsultController.prescribe);
 
 export default router;

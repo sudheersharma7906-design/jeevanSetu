@@ -23,7 +23,8 @@ export class EmergencyController {
         locationPrivacy: {
           capturedOnExplicitTrigger: true,
           privacyConsent: 'EXPLICIT_EMERGENCY_ONLY',
-          continuousTracking: false,
+          activeEmergencyTracking: true,
+          passiveBackgroundTracking: false,
           policy: LOCATION_PRIVACY_POLICY.CAPTURE_MODE,
           gpsTimestamp: new Date().toISOString()
         }
@@ -33,7 +34,7 @@ export class EmergencyController {
       res.status(201).json({
         success: true,
         message: 'Emergency SOS alert dispatched to nearest RMPs and response network.',
-        privacyPolicy: 'Location captured on explicit emergency SOS trigger only. Continuous tracking is disabled.',
+        privacyPolicy: 'Location tracking begins strictly on explicit emergency SOS trigger only and terminates when emergency is resolved. Passive background tracking is disabled.',
         emergency: result
       });
     } catch (err) {

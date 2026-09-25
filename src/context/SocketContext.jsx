@@ -78,9 +78,13 @@ export const SocketProvider = ({ children }) => {
   // Fetch initial notifications from backend
   const fetchNotifications = useCallback(async () => {
     try {
+      const token = localStorage.getItem('jivansetu_token');
       const userId = user?.id || '';
       const roleParam = role || '';
-      const res = await fetch(getApiUrl(`/api/notifications?userId=${userId}&role=${roleParam}`));
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(getApiUrl(`/api/notifications?userId=${userId}&role=${roleParam}`), { headers });
       if (res.ok) {
         const data = await res.json();
         if (data.notifications) {
@@ -242,7 +246,11 @@ export const SocketProvider = ({ children }) => {
     );
 
     try {
-      await fetch(getApiUrl(`/api/notifications/${id}/read`), { method: 'PUT' });
+      const token = localStorage.getItem('jivansetu_token');
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      await fetch(getApiUrl(`/api/notifications/${id}/read`), { method: 'PUT', headers });
     } catch (err) {
       console.warn('Failed to mark read on server:', err.message);
     }
@@ -252,9 +260,13 @@ export const SocketProvider = ({ children }) => {
   const markAllNotificationsRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     try {
+      const token = localStorage.getItem('jivansetu_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       await fetch(getApiUrl('/api/notifications/mark-all-read'), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ userId: user?.id })
       });
     } catch (err) {
@@ -269,9 +281,18 @@ export const SocketProvider = ({ children }) => {
 
   const acceptIncomingSos = (emergencyId) => {
     soundManager.stopSiren();
+    const rmpId = user?.id || user?.rmpId;
+    if (!rmpId) {
+      addToast({
+        type: 'ERROR',
+        title: 'Authentication Required',
+        message: 'You must be logged in as an RMP to accept emergency calls.'
+      });
+      return;
+    }
     socket.emit('sos:accept', {
       emergencyId,
-      rmpId: user?.id || 'usr-rmp-001'
+      rmpId
     });
     setActiveIncomingSos(null);
     addToast({

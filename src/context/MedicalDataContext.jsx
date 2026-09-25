@@ -71,21 +71,8 @@ export const MedicalDataProvider = ({ children }) => {
     fetchUserData();
   }, [user, token, isAuthenticated]);
 
-  useEffect(() => {
-    if (isAuthenticated && healthRecords.length > 0) {
-      localStorage.setItem('jivansetu_records', JSON.stringify(healthRecords));
-    }
-  }, [healthRecords, isAuthenticated]);
-
-  useEffect(() => {
-    if (isAuthenticated && prescriptions.length > 0) {
-      localStorage.setItem('jivansetu_prescriptions', JSON.stringify(prescriptions));
-    }
-  }, [prescriptions, isAuthenticated]);
-
-  useEffect(() => {
-    localStorage.setItem('jivansetu_queue', JSON.stringify(doctorQueue));
-  }, [doctorQueue]);
+  // Medical records & prescriptions are maintained in active React session state and fetched dynamically from backend DB.
+  // Sensitive PHI is never stored unencrypted in browser localStorage.
 
   // Get single patient profile (no pat-101 hard-coded fallback)
   const getPatientProfile = (identifier) => {
@@ -99,9 +86,10 @@ export const MedicalDataProvider = ({ children }) => {
   };
 
   // Update or save patient profile
-  const updatePatientProfile = (identifier, updates) => {
-    const cleanId = String(identifier || updates.phone || 'pat-101').replace(/\D/g, '').slice(-10);
-    const prev = getPatientProfile(identifier) || {};
+  const updatePatientProfile = (identifier, updates = {}) => {
+    const targetId = identifier || updates.id || user?.id || user?.patientId || '';
+    const cleanId = String(targetId || updates.phone || '').replace(/\D/g, '').slice(-10);
+    const prev = getPatientProfile(targetId) || {};
 
     const updatedProfile = {
       ...prev,
@@ -124,7 +112,7 @@ export const MedicalDataProvider = ({ children }) => {
 
   // Report Disease / Symptoms & Transmit to Doctors and RMPs
   const reportDiseaseIssue = ({
-    patientId = 'pat-101',
+    patientId = '',
     patientName,
     phone,
     age,
@@ -137,8 +125,9 @@ export const MedicalDataProvider = ({ children }) => {
     vitals = { bp: '130/85', pulse: '80 bpm', spo2: '98%', temp: '98.6 °F' },
     notes = ''
   }) => {
-    const profile = getPatientProfile(patientId || phone) || {};
-    const effectiveName = patientName || profile.name || 'Patient';
+    const targetPatientId = patientId || user?.id || user?.patientId || '';
+    const profile = getPatientProfile(targetPatientId || phone) || {};
+    const effectiveName = patientName || profile.name || user?.name || 'Patient';
     const effectiveAge = age || profile.age || 45;
     const effectiveGender = gender || profile.gender || 'Unknown';
     const effectiveChronic = profile.chronicConditions || [];
@@ -171,13 +160,13 @@ export const MedicalDataProvider = ({ children }) => {
 
     const newCase = {
       id: newCaseId,
-      patientId: profile.id || patientId || `pat-101`,
+      patientId: profile.id || targetPatientId || user?.id || user?.patientId || '',
       patientName: effectiveName,
-      phone: profile.phone || phone || '9876543210',
+      phone: profile.phone || phone || user?.phone || '',
       age: effectiveAge,
       gender: effectiveGender,
       bloodGroup: profile.bloodGroup || 'B+',
-      village: profile.village || 'Palghar Rural Block',
+      village: profile.village || user?.village || 'Rural Block',
       district: profile.district || 'Palghar',
       regularProblems: effectiveChronic,
       chronicConditions: effectiveChronic,
@@ -209,7 +198,7 @@ export const MedicalDataProvider = ({ children }) => {
       title: `Reported Illness: ${diseaseName || diseaseCategory}`,
       titleHi: `रोग रिपोर्ट: ${diseaseName || diseaseCategory}`,
       doctor: 'Submitted to Tele-Specialist & RMP Hub',
-      rmp: 'Dr. Anand Deshmukh',
+      rmp: 'On-Duty RMP',
       vitals,
       notes: `Symptoms: ${symptoms} | Severity: ${painScale}/10 | Duration: ${duration || '1-2 Days'} | Transmitted to Doctor & RMP network.`,
       notesHi: `लक्षण: ${symptoms} | तीव्रता: ${painScale}/10 | अवधि: ${duration || '1-2 दिन'} | डॉक्टर एवं आरएमपी को प्रेषित।`,
@@ -217,6 +206,46 @@ export const MedicalDataProvider = ({ children }) => {
     };
 
     setHealthRecords((prev) => [newRecord, ...prev]);
+
+    // Persist to backend database (Single Source of Truth)
+    if (token) {
+      (async () => {
+        try {
+          await fetch(getApiUrl('/api/triage'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              patientId: newCase.patientId,
+              symptoms: newCase.symptoms,
+              vitals: newCase.vitals,
+              painScale: newCase.painScale
+            })
+          });
+
+          if (newCase.patientId) {
+            await fetch(getApiUrl(`/api/records/${newCase.patientId}`), {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                title: newRecord.title,
+                doctor: newRecord.doctor,
+                rmp: newRecord.rmp,
+                notes: newRecord.notes,
+                vitals: newRecord.vitals
+              })
+            });
+          }
+        } catch (err) {
+          console.warn('[MEDICAL DATA BACKEND SYNC WARNING]:', err.message);
+        }
+      })();
+    }
 
     // Emit Socket notification to Doctors & RMPs
     try {
@@ -229,10 +258,10 @@ export const MedicalDataProvider = ({ children }) => {
   };
 
   // Add Triage Case into Doctor / RMP Queue (Compatibility method)
-  const addTriageCase = (triageData) => {
+  const addTriageCase = (triageData = {}) => {
     return reportDiseaseIssue({
-      patientId: triageData.patientId || 'pat-101',
-      patientName: triageData.patientName,
+      patientId: triageData.patientId || user?.id || user?.patientId || '',
+      patientName: triageData.patientName || user?.name,
       age: triageData.age,
       diseaseCategory: triageData.category || 'Clinical Triage Evaluation',
       diseaseName: triageData.category || 'AI Triage Case',
@@ -246,7 +275,7 @@ export const MedicalDataProvider = ({ children }) => {
   // Doctor / RMP Examines & Updates Patient Profile with New Disease, Issues & Prescription
   const doctorUpdateDiagnosis = ({
     caseId,
-    patientId = 'pat-101',
+    patientId = '',
     patientPhone,
     patientName,
     doctorName = 'Dr. Priya Sharma, MD',
@@ -309,7 +338,7 @@ export const MedicalDataProvider = ({ children }) => {
       title: `Doctor Clinical Diagnosis: ${diagnosis}`,
       titleHi: `डॉक्टर नैदानिक रिपोर्ट: ${diagnosisHi || diagnosis}`,
       doctor: doctorName,
-      rmp: 'Dr. Anand Deshmukh',
+      rmp: 'On-Duty RMP',
       vitals,
       notes: `${clinicalNotes || 'Patient evaluated via teleconsultation.'} Prescribed ${fullRx.medicines.length} medications. Added to health record.`,
       notesHi: `${clinicalNotesHi || clinicalNotes || 'टेलीपरामर्श द्वारा मरीज की जांच पूर्ण की गई।'} ${fullRx.medicines.length} दवाएं निर्धारित की गईं।`,
@@ -333,6 +362,49 @@ export const MedicalDataProvider = ({ children }) => {
             : c
         )
       );
+    }
+
+    // 5. Persist to backend database (Single Source of Truth)
+    if (token) {
+      (async () => {
+        try {
+          await fetch(getApiUrl('/api/prescriptions'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              patientId: profile.id || patientId,
+              diagnosis: fullRx.diagnosis,
+              medications: fullRx.medicines,
+              vitals: vitals,
+              instructions: dietAdvice
+            })
+          });
+
+          const targetPid = profile.id || patientId;
+          if (targetPid) {
+            await fetch(getApiUrl(`/api/records/${targetPid}`), {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                title: timelineEntry.title,
+                doctor: timelineEntry.doctor,
+                rmp: timelineEntry.rmp,
+                notes: timelineEntry.notes,
+                vitals: timelineEntry.vitals,
+                verifiedBy: timelineEntry.verifiedBy
+              })
+            });
+          }
+        } catch (err) {
+          console.warn('[DOCTOR DIAGNOSIS BACKEND SYNC WARNING]:', err.message);
+        }
+      })();
     }
 
     return { profile, prescription: fullRx, record: timelineEntry };

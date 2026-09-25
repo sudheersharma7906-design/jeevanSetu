@@ -249,7 +249,7 @@ export const TriageResult = ({ result, onStartConsult, onReset }) => {
             </button>
 
             <button
-              onClick={() => alert(lang === 'hi' ? 'आरएमपी को परामर्श अनुरोध भेजा गया।' : 'Consult request dispatched to on-duty RMP Anand Deshmukh.')}
+              onClick={() => alert(lang === 'hi' ? 'आरएमपी को परामर्श अनुरोध भेजा गया।' : 'Consult request dispatched to on-duty RMP.')}
               className="btn btn-outline btn-lg"
               style={{ flex: 1, minWidth: '200px' }}
             >

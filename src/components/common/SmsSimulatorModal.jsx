@@ -32,7 +32,11 @@ export const SmsSimulatorModal = ({ isOpen, onClose }) => {
   const fetchLogs = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(getApiUrl('/api/notifications/carrier/logs?limit=40'));
+      const token = localStorage.getItem('jivansetu_token');
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(getApiUrl('/api/notifications/carrier/logs?limit=40'), { headers });
       if (res.ok) {
         const data = await res.json();
         if (data.logs) {
@@ -56,10 +60,14 @@ export const SmsSimulatorModal = ({ isOpen, onClose }) => {
     e.preventDefault();
     setIsSending(true);
     try {
+      const token = localStorage.getItem('jivansetu_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const endpoint = activeTab === 'WHATSAPP' ? '/api/notifications/whatsapp' : '/api/notifications/sms';
       const res = await fetch(getApiUrl(endpoint), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           to: targetPhone,
           message: customMsg,

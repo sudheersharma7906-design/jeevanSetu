@@ -2,6 +2,7 @@
 import { db } from '../../data/db.js';
 import { ROLES, EMERGENCY_STATUS, CONSULT_STATUS } from '../../config/constants.js';
 import { User, EmergencyRequest, Consult, Prescription } from '../../models/index.js';
+import { isMongoConnected } from '../../config/database.js';
 
 export class AdminService {
   static async getDashboardStats() {
@@ -10,13 +11,15 @@ export class AdminService {
     let consults = [];
     let prescriptions = [];
 
-    try {
-      users = await User.find();
-      emergencies = await EmergencyRequest.find();
-      consults = await Consult.find();
-      prescriptions = await Prescription.find();
-    } catch (e) {
-      console.warn('[ADMIN] MongoDB query notice (falling back to memory stats):', e.message);
+    if (isMongoConnected()) {
+      try {
+        users = await User.find().maxTimeMS(1500);
+        emergencies = await EmergencyRequest.find().maxTimeMS(1500);
+        consults = await Consult.find().maxTimeMS(1500);
+        prescriptions = await Prescription.find().maxTimeMS(1500);
+      } catch (e) {
+        console.warn('[ADMIN] MongoDB query notice (falling back to memory stats):', e.message);
+      }
     }
 
     // Fallback to memory DB if MongoDB collections are empty/unreachable
@@ -55,7 +58,7 @@ export class AdminService {
     const avgResponseTimeMin = countedSos > 0 ? (totalResponseMinutes / countedSos).toFixed(1) : '4.2';
 
     return {
-      systemHealth: 'HEALTHY',
+      systemHealth: isMongoConnected() ? 'HEALTHY' : 'DEGRADED_MEMORY_MODE',
       timestamp: new Date().toISOString(),
       counts: {
         totalUsers: users.length,
@@ -81,26 +84,30 @@ export class AdminService {
   }
 
   static async getEmergencyAuditLogs() {
-    try {
-      const mongoEmerg = await EmergencyRequest.find().sort({ createdAt: -1 });
-      if (mongoEmerg && mongoEmerg.length > 0) {
-        return mongoEmerg.map(em => ({
-          id: em._id.toString(),
-          patientName: em.patientName,
-          patientPhone: em.patientPhone,
-          triggerType: em.triggerType,
-          symptoms: em.symptoms,
-          location: em.location,
-          matchedRmp: em.matchedRmp,
-          status: em.status,
-          tier: em.tier,
-          createdAt: em.createdAt,
-          resolvedAt: em.resolvedAt || null,
-          timelineEventsCount: em.timeline?.length || 0,
-          timeline: em.timeline
-        }));
+    if (isMongoConnected()) {
+      try {
+        const mongoEmerg = await EmergencyRequest.find().maxTimeMS(1500).sort({ createdAt: -1 });
+        if (mongoEmerg && mongoEmerg.length > 0) {
+          return mongoEmerg.map(em => ({
+            id: em._id.toString(),
+            patientName: em.patientName,
+            patientPhone: em.patientPhone,
+            triggerType: em.triggerType,
+            symptoms: em.symptoms,
+            location: em.location,
+            matchedRmp: em.matchedRmp,
+            status: em.status,
+            tier: em.tier,
+            createdAt: em.createdAt,
+            resolvedAt: em.resolvedAt || null,
+            timelineEventsCount: em.timeline?.length || 0,
+            timeline: em.timeline
+          }));
+        }
+      } catch (e) {
+        console.warn('[ADMIN] Emergency logs query notice:', e.message);
       }
-    } catch (e) {}
+    }
 
     return db.getAllEmergencies().map(em => ({
       id: em.id,
@@ -120,17 +127,21 @@ export class AdminService {
   }
 
   static async getAllUsers(roleFilter = '') {
-    try {
-      const query = {};
-      if (roleFilter) query.role = roleFilter.toLowerCase();
-      const mongoUsers = await User.find(query);
-      if (mongoUsers && mongoUsers.length > 0) {
-        return mongoUsers.map(u => {
-          const obj = u.toObject();
-          return { ...obj, id: obj._id.toString() };
-        });
+    if (isMongoConnected()) {
+      try {
+        const query = {};
+        if (roleFilter) query.role = roleFilter.toLowerCase();
+        const mongoUsers = await User.find(query).maxTimeMS(1500);
+        if (mongoUsers && mongoUsers.length > 0) {
+          return mongoUsers.map(u => {
+            const obj = u.toObject();
+            return { ...obj, id: obj._id.toString() };
+          });
+        }
+      } catch (e) {
+        console.warn('[ADMIN] Users query notice:', e.message);
       }
-    } catch (e) {}
+    }
 
     let users = db.getAllUsers();
     if (roleFilter) {
@@ -140,18 +151,22 @@ export class AdminService {
   }
 
   static async verifyUser(userId, { verified = true, status = 'ACTIVE' }) {
-    try {
-      const updatedMongo = await User.findByIdAndUpdate(
-        userId,
-        { isVerified: verified, accountStatus: status },
-        { new: true }
-      );
-      if (updatedMongo) {
-        db.updateUser(userId, { isVerified: verified, accountStatus: status });
-        const obj = updatedMongo.toObject();
-        return { ...obj, id: obj._id.toString() };
+    if (isMongoConnected()) {
+      try {
+        const updatedMongo = await User.findByIdAndUpdate(
+          userId,
+          { isVerified: verified, accountStatus: status },
+          { new: true, maxTimeMS: 1500 }
+        );
+        if (updatedMongo) {
+          db.updateUser(userId, { isVerified: verified, accountStatus: status });
+          const obj = updatedMongo.toObject();
+          return { ...obj, id: obj._id.toString() };
+        }
+      } catch (e) {
+        console.warn('[ADMIN] Verify user query notice:', e.message);
       }
-    } catch (e) {}
+    }
 
     const user = db.findUserById(userId);
     if (!user) {

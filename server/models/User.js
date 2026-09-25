@@ -52,10 +52,6 @@ const UserSchema = new mongoose.Schema(
       trim: true,
       index: true
     },
-    password: {
-      type: String,
-      trim: true
-    },
     passwordHash: {
       type: String,
       trim: true
@@ -123,27 +119,31 @@ const UserSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true }
+    toJSON: {
+      virtuals: true,
+      transform: function (doc, ret) {
+        delete ret.password;
+        delete ret.passwordHash;
+        delete ret.__v;
+        return ret;
+      }
+    },
+    toObject: {
+      virtuals: true,
+      transform: function (doc, ret) {
+        delete ret.password;
+        delete ret.passwordHash;
+        delete ret.__v;
+        return ret;
+      }
+    }
   }
 );
 
-// Pre-save hook to hash password if modified
-UserSchema.pre('save', async function () {
-  if (this.isModified('password') && this.password) {
-    this.passwordHash = await bcrypt.hash(this.password, 10);
-  }
-});
-
 // Compare entered password with stored hash
 UserSchema.methods.comparePassword = async function (candidatePassword) {
-  if (this.passwordHash) {
-    return await bcrypt.compare(candidatePassword, this.passwordHash);
-  }
-  if (this.password) {
-    return candidatePassword === this.password;
-  }
-  return false;
+  if (!this.passwordHash) return false;
+  return await bcrypt.compare(candidatePassword, this.passwordHash);
 };
 
 // 2dsphere index on location — required for nearest-RMP geo queries

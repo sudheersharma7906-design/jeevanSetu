@@ -24,7 +24,33 @@ export function securityHeaders(req, res, next) {
   // Restrict browser features and sensors
   res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(self), microphone=(self)');
 
-  // Content Security Policy (allows local assets, font CDNs, OpenStreetMap tiles)
+  // Build dynamic connect-src targets for CSP
+  const extraConnectOrigins = [];
+  if (process.env.CLIENT_URL && process.env.CLIENT_URL !== '*') {
+    extraConnectOrigins.push(process.env.CLIENT_URL);
+  }
+  if (process.env.VITE_API_URL) {
+    extraConnectOrigins.push(process.env.VITE_API_URL);
+  }
+  if (process.env.ALLOWED_ORIGINS) {
+    extraConnectOrigins.push(...process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()));
+  }
+
+  const connectSrcTargets = Array.from(new Set([
+    "'self'",
+    "http://localhost:*",
+    "ws://localhost:*",
+    "wss://localhost:*",
+    "https://nominatim.openstreetmap.org",
+    "https://*.vercel.app",
+    "https://*.onrender.com",
+    "wss://*.onrender.com",
+    "https://*.netlify.app",
+    "wss://*.netlify.app",
+    ...extraConnectOrigins
+  ])).join(' ');
+
+  // Content Security Policy (allows local assets, font CDNs, OpenStreetMap tiles, production cloud domains & WebSockets)
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
@@ -32,7 +58,7 @@ export function securityHeaders(req, res, next) {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; " +
     "font-src 'self' https://fonts.gstatic.com data:; " +
     "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.tile.osm.org https://unpkg.com; " +
-    "connect-src 'self' http://localhost:* ws://localhost:* https://nominatim.openstreetmap.org; " +
+    `connect-src ${connectSrcTargets}; ` +
     "frame-ancestors 'self';"
   );
 

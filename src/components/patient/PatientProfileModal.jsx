@@ -48,30 +48,30 @@ export const PatientProfileModal = ({ isOpen, onClose, currentPatient, onSaved }
   const initialProfile = getPatientProfile(currentPatient?.id || currentPatient?.phone) || {};
 
   const [name, setName] = useState(initialProfile.name || currentPatient?.name || '');
-  const [age, setAge] = useState(initialProfile.age || currentPatient?.age || 45);
+  const [age, setAge] = useState(initialProfile.age || currentPatient?.age || '');
   const [gender, setGender] = useState(initialProfile.gender || currentPatient?.gender || 'Male');
   const [bloodGroup, setBloodGroup] = useState(initialProfile.bloodGroup || 'B+');
-  const [phone, setPhone] = useState(initialProfile.phone || currentPatient?.phone || '9876543210');
-  const [abhaId, setAbhaId] = useState(initialProfile.abhaId || 'ABHA-9821-4451-9012');
-  const [address, setAddress] = useState(initialProfile.address || 'Near Gram Panchayat, Wada Rural, Dist. Palghar');
-  const [village, setVillage] = useState(initialProfile.village || 'Wada Rural');
-  const [district, setDistrict] = useState(initialProfile.district || 'Palghar');
-  const [state, setState] = useState(initialProfile.state || 'Maharashtra');
+  const [phone, setPhone] = useState(initialProfile.phone || currentPatient?.phone || '');
+  const [abhaId, setAbhaId] = useState(initialProfile.abhaId || '');
+  const [address, setAddress] = useState(initialProfile.address || '');
+  const [village, setVillage] = useState(initialProfile.village || '');
+  const [district, setDistrict] = useState(initialProfile.district || '');
+  const [state, setState] = useState(initialProfile.state || '');
 
-  const [emergencyName, setEmergencyName] = useState(initialProfile.emergencyContact?.name || 'Sunita Patil');
-  const [emergencyPhone, setEmergencyPhone] = useState(initialProfile.emergencyContact?.phone || '9876543211');
-  const [emergencyRelation, setEmergencyRelation] = useState(initialProfile.emergencyContact?.relation || 'Spouse');
+  const [emergencyName, setEmergencyName] = useState(initialProfile.emergencyContact?.name || '');
+  const [emergencyPhone, setEmergencyPhone] = useState(initialProfile.emergencyContact?.phone || '');
+  const [emergencyRelation, setEmergencyRelation] = useState(initialProfile.emergencyContact?.relation || '');
 
-  const [chronicConditions, setChronicConditions] = useState(initialProfile.chronicConditions || ['Type 2 Diabetes', 'Hypertension (High BP)']);
+  const [chronicConditions, setChronicConditions] = useState(initialProfile.chronicConditions || []);
   const [customChronic, setCustomChronic] = useState('');
 
-  const [allergies, setAllergies] = useState(initialProfile.allergies || ['Penicillin']);
+  const [allergies, setAllergies] = useState(initialProfile.allergies || []);
   const [customAllergy, setCustomAllergy] = useState('');
 
   const [currentMeds, setCurrentMeds] = useState(
     Array.isArray(initialProfile.currentMedications)
       ? initialProfile.currentMedications.join(', ')
-      : initialProfile.currentMedications || 'Amlodipine 5mg (Daily Morning), Metformin 500mg (Twice Daily)'
+      : initialProfile.currentMedications || ''
   );
 
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -80,20 +80,20 @@ export const PatientProfileModal = ({ isOpen, onClose, currentPatient, onSaved }
     if (isOpen) {
       const p = getPatientProfile(currentPatient?.id || currentPatient?.phone) || {};
       setName(p.name || currentPatient?.name || '');
-      setAge(p.age || currentPatient?.age || 45);
+      setAge(p.age || currentPatient?.age || '');
       setGender(p.gender || currentPatient?.gender || 'Male');
       setBloodGroup(p.bloodGroup || 'B+');
-      setPhone(p.phone || currentPatient?.phone || '9876543210');
-      setAbhaId(p.abhaId || 'ABHA-9821-4451-9012');
-      setAddress(p.address || 'Near Gram Panchayat, Wada Rural, Dist. Palghar');
-      setVillage(p.village || 'Wada Rural');
-      setDistrict(p.district || 'Palghar');
-      setState(p.state || 'Maharashtra');
-      setEmergencyName(p.emergencyContact?.name || 'Sunita Patil');
-      setEmergencyPhone(p.emergencyContact?.phone || '9876543211');
-      setEmergencyRelation(p.emergencyContact?.relation || 'Spouse');
-      setChronicConditions(p.chronicConditions || ['Type 2 Diabetes', 'Hypertension (High BP)']);
-      setAllergies(p.allergies || ['Penicillin']);
+      setPhone(p.phone || currentPatient?.phone || '');
+      setAbhaId(p.abhaId || '');
+      setAddress(p.address || '');
+      setVillage(p.village || '');
+      setDistrict(p.district || '');
+      setState(p.state || '');
+      setEmergencyName(p.emergencyContact?.name || '');
+      setEmergencyPhone(p.emergencyContact?.phone || '');
+      setEmergencyRelation(p.emergencyContact?.relation || '');
+      setChronicConditions(p.chronicConditions || []);
+      setAllergies(p.allergies || []);
       setCurrentMeds(
         Array.isArray(p.currentMedications) ? p.currentMedications.join(', ') : p.currentMedications || ''
       );

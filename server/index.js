@@ -115,9 +115,12 @@ setupSocketHandlers(io);
 app.get('/api/health', async (req, res) => {
   const dbHealth = await getDatabaseHealth();
   const memory = process.memoryUsage();
+  const isHealthy = dbHealth.status === 'healthy';
+  const overallStatus = isHealthy ? 'healthy' : 'degraded';
+  const statusCode = isHealthy ? 200 : 503;
 
-  res.status(200).json({
-    status: 'healthy',
+  res.status(statusCode).json({
+    status: overallStatus,
     service: 'JeevanSetu Rural Telemedicine & Emergency Backend',
     version: '1.0.0',
     environment: process.env.NODE_ENV || 'development',
